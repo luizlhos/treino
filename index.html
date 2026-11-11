@@ -465,7 +465,7 @@ const KIND_ICON={load:'🏋️',bw:'🤸',time:'⏱️',cardio:'🏃',wod:'🔥'
 const CATALOG=CATALOG_RAW.split('\n').map((l,i)=>{const[n,c,g,e,k]=l.split('|');return{id:'c_'+n.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,''),name:n,cat:CATN[c],grp:g,eq:e,kind:KIND[k]}});
 
 "use strict";
-const APP_VERSION='3.2.0';
+const APP_VERSION='3.2.1';
 const SB_URL='https://zmiupzagkipjyaabzihx.supabase.co',SB_KEY='sb_publishable_G8TxNzbpzE_llnFnk5cXQg_4tCRcPDe',MASTER_HISTORY=true;
 const $=s=>document.querySelector(s);
 let S=null,KEY=null,ME=null,SB=null,MANAGE=null,USERS=null,CUSTOM_CAT=[];
@@ -489,6 +489,9 @@ function dlong(s){return pISO(s).toLocaleDateString('pt-BR',{weekday:'short',day
 function mmss(sec){sec=Math.max(0,Math.round(sec));const h=Math.floor(sec/3600),m=Math.floor(sec%3600/60),s=sec%60;return(h?h+':'+String(m).padStart(2,'0'):m)+':'+String(s).padStart(2,'0')}
 function parseTime(t){if(t==null||t==='')return null;t=String(t).trim();if(/^\d+([.,]\d+)?$/.test(t))return Math.round(num(t)*60);const p=t.split(':').map(Number);if(p.some(isNaN))return null;return p.length===3?p[0]*3600+p[1]*60+p[2]:p[0]*60+(p[1]||0)}
 function pace(min,km){return min&&km?mmss(min*60/km)+'/km':'—'}
+function isoToBR(s){const m=String(s||'').match(/^(\d{4})-(\d{2})-(\d{2})$/);return m?`${m[3]}/${m[2]}/${m[1]}`:''}
+function brToISO(s){const m=String(s||'').trim().match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);if(!m)return null;const d=+m[1],mo=+m[2],y=+m[3];const t=new Date(y,mo-1,d);if(t.getFullYear()!==y||t.getMonth()!==mo-1||t.getDate()!==d)return null;return`${y}-${String(mo).padStart(2,'0')}-${String(d).padStart(2,'0')}`}
+function maskDate(v){const d=String(v).replace(/\D/g,'').slice(0,8);return d.length>4?d.slice(0,2)+'/'+d.slice(2,4)+'/'+d.slice(4):d.length>2?d.slice(0,2)+'/'+d.slice(2):d}
 function norm(s){return String(s||'').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'')}
 
 /* ---------- periodização ---------- */
@@ -1025,11 +1028,12 @@ VIEWS.ajustes=function(){const st=S.settings,p=myActive();
   let h=hdr('Ajustes','Versão '+APP_VERSION,false,syncBadge());
   if(p){const w=progOf(p).week,N=weeksOf(p);h+=`<h3>Plano ativo</h3><div class="card"><div class="b">${esc(p.name)}</div><p class="sm mu">A semana avança sozinha quando você completa todos os treinos. Use os botões só para corrigir.</p>
     <div class="row"><button class="btn smb" data-act="shiftWeek" data-d="-1">◀ Voltar</button><div class="sp" style="text-align:center"><b>Semana ${Math.min(w,N+1)}</b><div class="mu xs">${w<=N?esc(phaseAt(p,w).name):'concluído'}</div></div><button class="btn smb" data-act="shiftWeek" data-d="1">Avançar ▶</button></div></div>`}
-  {const B=bodyOf(),r=bmrOf(B);h+=`<h3>Perfil corporal</h3><div class="card"><div class="grid2"><label class="f" style="margin-top:0"><span>Sexo</span>${sel('',[['','—'],['M','Masculino'],['F','Feminino']],B.sex,'data-bf="sex"')}</label><label class="f" style="margin-top:0"><span>Nascimento</span><input type="date" data-bf="birth" value="${esc(B.birth||'')}"></label></div>
-    <div class="grid2"><label class="f"><span>Altura (cm)</span><input data-bf="height" inputmode="numeric" value="${B.height??''}" placeholder="ex: 175"></label><label class="f"><span>Peso atual (kg)</span><button class="btn block" data-act="addWeight" style="padding:10px">${weightAt(B)?fnum(weightAt(B),1)+' kg · atualizar':'Registrar'}</button></label></div>
-    <div class="sm" style="margin-top:4px">${r?`Metabolismo basal estimado: <b>${Math.round(r).toLocaleString('pt-BR')} kcal/dia</b>`:'<span class="mu">Preencha tudo para calcular o metabolismo e o gasto dos treinos.</span>'}</div>
-    <div class="mu xs" style="margin-top:6px">${ME.role==='master'?'Usado para estimar o gasto calórico dos treinos.':'Usado para estimar o gasto calórico dos treinos. Visível para você e para o administrador do app.'}</div></div>`}
-  h+=`<h3>Durante o treino</h3><div class="card" style="padding:4px 14px"><div class="sw"><span>Som ao fim do descanso</span><input type="checkbox" data-sf="sound" ${st.sound?'checked':''}></div><div class="sw"><span>Aviso faltando 5 segundos</span><input type="checkbox" data-sf="warn5" ${st.warn5!==false?'checked':''}></div><div class="sw"><span>Manter tela ligada</span><input type="checkbox" data-sf="wake" ${st.wake?'checked':''}></div>
+  {const B=bodyOf(),r=bmrOf(B);h+=`<h3>Perfil corporal</h3><div class="card"><div class="grid2"><label class="f" style="margin-top:0"><span>Sexo</span>${sel('',[['','—'],['M','Masculino'],['F','Feminino']],B.sex,'id="bfSex"')}</label><label class="f" style="margin-top:0"><span>Nascimento (DD/MM/AAAA)</span><input id="bfBirth" data-mask="date" inputmode="numeric" maxlength="10" placeholder="dd/mm/aaaa" value="${esc(isoToBR(B.birth))}" autocomplete="bday"></label></div>
+    <div class="grid2"><label class="f"><span>Altura (cm)</span><input id="bfHeight" inputmode="numeric" maxlength="3" value="${B.height??''}" placeholder="ex: 175"></label><label class="f"><span>Peso atual (kg)</span><button class="btn block" data-act="addWeight" style="padding:10px">${weightAt(B)?fnum(weightAt(B),1)+' kg · atualizar':'Registrar'}</button></label></div>
+    <button class="btn pri block" data-act="saveBody" style="margin-top:4px">Salvar perfil</button>
+    <div class="sm" style="margin-top:10px">${r?`Metabolismo basal estimado: <b>${Math.round(r).toLocaleString('pt-BR')} kcal/dia</b>`:'<span class="mu">Preencha sexo, nascimento, altura e peso para calcular o metabolismo e o gasto dos treinos.</span>'}</div>
+    <div class="mu xs" style="margin-top:6px">${ME.role==='master'?'Usado para estimar o gasto calórico dos treinos.':'Usado para estimar o gasto calórico dos treinos. Visível para você e para o administrador do app.'} O peso é salvo ao tocar em "Salvar" na janela de registro.</div></div>`}
+  h+=`<h3>Durante o treino</h3><p class="mu xs" style="margin:-4px 0 6px">Estas opções são salvas automaticamente ao tocar.</p><div class="card" style="padding:4px 14px"><div class="sw"><span>Som ao fim do descanso</span><input type="checkbox" data-sf="sound" ${st.sound?'checked':''}></div><div class="sw"><span>Aviso faltando 5 segundos</span><input type="checkbox" data-sf="warn5" ${st.warn5!==false?'checked':''}></div><div class="sw"><span>Manter tela ligada</span><input type="checkbox" data-sf="wake" ${st.wake?'checked':''}></div>
     <div class="sw"><span>Pausar o cronômetro do treino ao sair da tela<div class="mu xs">Pausa ao bloquear o celular <b>e</b> ao trocar de app (o iPhone não diferencia os dois). Você também pode pausar manualmente no ⏸.</div></span><input type="checkbox" data-sf="autoPause" ${st.autoPause?'checked':''}></div>
     <div style="padding:10px 0"><button class="btn block" data-act="testSound">🔊 Testar alertas sonoros</button><div class="mu xs" style="margin-top:6px">Se não ouvir: aumente o volume e confira se o iPhone não está no modo silencioso.</div></div></div>`;
   h+=`<h3>Conta</h3><div class="card"><div class="b">${esc(ME.name||'')}${ME.role==='master'?' <span class="pill" style="background:var(--ac);color:#1d0d03">master</span>':''}</div><div class="mu sm">${esc(ME.email||'')}</div><div class="sm" style="margin:8px 0">${syncText()}</div>
@@ -1244,9 +1248,13 @@ Object.assign(ACT,{
   tAdd:d=>{if(T){T.end+=(+d.s)*1000;T.total=Math.max(T.total,(T.end-Date.now())/1000);const left=(T.end-Date.now())/1000;if(left>0)T.fired=false;if(left>5)T.warned=false;persistTimer();tick()}},
   tClose:()=>{T=null;persistTimer();tick()},
   pauseW:()=>{const A=S.active;if(!A)return;if(A.pausedAt){A.pausedMs=(A.pausedMs||0)+(Date.now()-A.pausedAt);A.pausedAt=null;A.autoPaused=false;toast('Cronômetro retomado')}else{A.pausedAt=Date.now();toast('Cronômetro pausado')}save();render()},
-  addWeight:()=>{const B=bodyOf();modal('Registrar peso',`<div class="grid2"><label class="f"><span>Data</span><input type="date" id="wDate" value="${iso(new Date())}"></label><label class="f"><span>Peso (kg)</span><input id="wKg" inputmode="decimal" value="${weightAt(B)??''}" placeholder="ex: 85,4"></label></div>`,
-    [{label:'Cancelar'},{label:'Salvar',cls:'pri',keep:true,fn:()=>{const d=$('#wDate').value,kg=num($('#wKg').value);if(!d||!kg||kg<25||kg>350){toast('Peso inválido');return}B.weights=(B.weights||[]).filter(x=>x.date!==d);B.weights.push({date:d,kg:r2(kg)});$('#modal').hidden=true;save();render();toast('Peso registrado')}}])},
+  addWeight:()=>{const B=bodyOf();modal('Registrar peso',`<div class="grid2"><label class="f"><span>Data (DD/MM/AAAA)</span><input id="wDate" data-mask="date" inputmode="numeric" maxlength="10" value="${isoToBR(iso(new Date()))}"></label><label class="f"><span>Peso (kg)</span><input id="wKg" inputmode="decimal" value="${weightAt(B)??''}" placeholder="ex: 85,4"></label></div>`,
+    [{label:'Cancelar'},{label:'Salvar',cls:'pri',keep:true,fn:()=>{const d=brToISO($('#wDate').value),kg=num($('#wKg').value);if(!d||d>iso(new Date())){toast('Data inválida — use DD/MM/AAAA');return}if(!kg||kg<25||kg>350){toast('Peso inválido');return}B.weights=(B.weights||[]).filter(x=>x.date!==d);B.weights.push({date:d,kg:r2(kg)});$('#modal').hidden=true;save();render();toast('Peso registrado')}}])},
   delWeight:d=>{const B=bodyOf();const x=(B.weights||[]).find(w=>w.date===d.date);confirmBox('Excluir pesagem',`Remover <b>${fnum(x.kg,1)} kg</b> de ${dshort(d.date)}?`,'Excluir',()=>{B.weights=B.weights.filter(w=>w.date!==d.date);save();render()},true)},
+  saveBody:()=>{const B=bodyOf();const sex=$('#bfSex').value,bt=$('#bfBirth').value.trim(),ht=$('#bfHeight').value.trim();
+    let birth='';if(bt){birth=brToISO(bt);if(!birth){toast('Data de nascimento inválida — use DD/MM/AAAA');$('#bfBirth').focus();return}const a=ageAt(birth);if(a==null||a<10||a>100){toast('Confira o ano de nascimento');$('#bfBirth').focus();return}}
+    let height=null;if(ht){height=Math.round(num(ht));if(!height||height<100||height>250){toast('Altura em centímetros (ex: 175)');$('#bfHeight').focus();return}}
+    B.sex=sex;B.birth=birth;B.height=height;save();render();toast('Perfil salvo ✓')},
   testSound:()=>{audio();beep('warn');setTimeout(()=>beep('end'),900)},
   advWeek:()=>{const p=myActive(),pr=progOf(p),done=doneThisWeek(p),miss=p.sessions.filter(s=>!done.has(s.id)).map(s=>esc(s.name));const N=weeksOf(p);
     confirmBox(`Encerrar semana ${pr.week}`,`<p>Ir para a <b>semana ${pr.week+1}</b>${pr.week<N?' ('+esc(phaseAt(p,pr.week+1).name)+')':''} sem fazer: ${miss.join(', ')||'—'}?</p>`,'Avançar semana',()=>{pr.week++;if(pr.week>N&&p.repeat){pr.week=1;pr.round=(pr.round||1)+1}save();render();toast(pr.week>N?'Plano concluído':'Semana '+pr.week+' · '+phaseAt(p,pr.week).name)})},
@@ -1266,7 +1274,8 @@ document.addEventListener('click',ev=>{const b=ev.target.closest('[data-act]');i
 document.addEventListener('input',ev=>{const t=ev.target,d=t.dataset;
   if(d.wf||d.wc||(d.ww&&d.ww!=='capped'&&t.tagName!=='SELECT'))onWorkoutInput(t,false);
   else if(d.wnote&&S.active){S.active.note=t.value;save()}
-  else if(t.id==='pkQ'){PK.q=t.value;refreshPicker()}});
+  else if(t.id==='pkQ'){PK.q=t.value;refreshPicker()}
+  else if(d.mask==='date'){const v=maskDate(t.value);if(v!==t.value)t.value=v}});
 document.addEventListener('change',ev=>{const t=ev.target,d=t.dataset;
   if(d.wf||d.wc||d.ww)return onWorkoutInput(t,true);
   if(t.id==='importFile')return onImport(t);
@@ -1288,7 +1297,6 @@ document.addEventListener('change',ev=>{const t=ev.target,d=t.dataset;
   if(d.ew){const e=exIn(planOf(d),d.eid).e;e.wod=e.wod||{};e.wod[d.ew]=d.ew==='cap'?num(t.value):t.value;psave();if(d.ew==='format')render();return}
   if(d.pl!=null){const e=exIn(planOf(d),d.eid).e,k=+d.pl,v=num(t.value);if(k<0)e.base=v;else e.plan[k]=v;psave();return}
   if(d.lf){const L=S.logs.find(l=>l.id===d.lid);L.exercises[+d.i].sets[+d.j][d.lf]=num(t.value);markLog(L.id);save();return}
-  if(d.bf){const B=bodyOf();let v=t.value;if(d.bf==='height'){v=Math.round(num(v));if(v&&(v<100||v>250)){toast('Altura em centímetros (ex: 175)');render();return}v=v||null}if(d.bf==='birth'&&v){const a=ageAt(v);if(a==null||a<10||a>100){toast('Data de nascimento inválida');render();return}}B[d.bf]=v;save();render();return}
   if(d.sf){S.settings[d.sf]=t.type==='checkbox'?t.checked:t.value;save();if(d.sf==='wake')wake();render();return}
 });
 
