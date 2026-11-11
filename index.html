@@ -75,6 +75,7 @@ input:focus,select:focus,textarea:focus{outline:2px solid var(--ac);border-color
 #timer .tbar{position:absolute;left:0;bottom:0;height:4px;background:var(--ac);transition:width .25s linear}
 #timer .tt{font-size:26px;font-weight:800;font-variant-numeric:tabular-nums;min-width:68px}#timer .sp{min-width:0}#tlab{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}#timer .btn.smb{padding:8px 9px;flex:none}
 #timer.end{background:#123522}#timer.end .tt{color:var(--ok)}
+#timer.warn5{background:#3d2e08}#timer.warn5 .tt{color:var(--warn)}#timer.warn5 .tbar{background:var(--warn)}
 #timer .tl{font-size:12px;color:var(--mu);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 /* nav */
 nav#tabs{position:fixed;bottom:0;left:0;right:0;display:flex;background:rgba(20,23,29,.96);-webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px);border-top:1px solid var(--s2);padding-bottom:env(safe-area-inset-bottom);z-index:20}
@@ -464,7 +465,7 @@ const KIND_ICON={load:'🏋️',bw:'🤸',time:'⏱️',cardio:'🏃',wod:'🔥'
 const CATALOG=CATALOG_RAW.split('\n').map((l,i)=>{const[n,c,g,e,k]=l.split('|');return{id:'c_'+n.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,''),name:n,cat:CATN[c],grp:g,eq:e,kind:KIND[k]}});
 
 "use strict";
-const APP_VERSION='3.0.0';
+const APP_VERSION='3.1.0';
 const SB_URL='https://zmiupzagkipjyaabzihx.supabase.co',SB_KEY='sb_publishable_G8TxNzbpzE_llnFnk5cXQg_4tCRcPDe',MASTER_HISTORY=true;
 const $=s=>document.querySelector(s);
 let S=null,KEY=null,ME=null,SB=null,MANAGE=null,USERS=null,CUSTOM_CAT=[];
@@ -574,7 +575,7 @@ function libFrom(o){if(!o)return null;if(o.plans)return o;if(isOldProgram(o)){co
 
 /* ---------- estado local ---------- */
 function freshSync(){return{progH:'',stateH:'',progEd:0,stateEd:0,progDirty:false,stateDirty:false,dirtyLogs:[],delLogs:[],lastPull:null,lastSync:null}}
-function defaultState(){return{v:3,lib:emptyLib(),prog:{},settings:{sound:true,wake:true,lastBackup:null,progEx:null},logs:[],active:null,_sync:freshSync()}}
+function defaultState(){return{v:3,lib:emptyLib(),prog:{},settings:{sound:true,wake:true,warn5:true,autoPause:false,lastBackup:null,progEx:null},logs:[],active:null,_sync:freshSync()}}
 function migrate(){const d=defaultState();
   if(S.program!==undefined||S.week!==undefined){ // estado v1/v2
     const lib=libFrom(S.program)||emptyLib();const p=lib.plans[0];S.lib=lib;S.prog={};if(p){S.prog[p.id]={week:S.week||1};(S.logs||[]).forEach(L=>{if(!L.planId){L.planId=p.id;L.planName=p.name}})}
@@ -582,15 +583,21 @@ function migrate(){const d=defaultState();
   S.v=3;S.lib=S.lib||emptyLib();S.lib.plans=S.lib.plans||[];S.prog=S.prog||{};S.logs=S.logs||[];
   S.settings=Object.assign(d.settings,S.settings||{});S._sync=Object.assign(freshSync(),S._sync||{});
   if(S.lib.plans.length&&!planById(S.lib.activeId,S.lib))S.lib.activeId=S.lib.plans[0].id}
-function load(){try{const r=localStorage.getItem(KEY);if(r){S=JSON.parse(r);migrate();return}}catch(e){console.warn(e)}S=defaultState();baseHashes()}
+function activeKey(){return ME?'treino.active.'+ME.id:null}
+function backupActive(){const k=activeKey();if(!k||!S)return;try{if(S.active)localStorage.setItem(k,JSON.stringify(S.active));else localStorage.removeItem(k)}catch(e){}}
+function restoreActive(){const k=activeKey();if(!k||!S||S.active)return false;try{const b=JSON.parse(localStorage.getItem(k)||'null');if(b&&b.id&&!S.logs.some(L=>L.id===b.id)){S.active=b;return true}}catch(e){}return false}
+function elapsedMs(A){return Math.max(0,(A.pausedAt||Date.now())-A.startedAt-(A.pausedMs||0))}
+function load(){try{const r=localStorage.getItem(KEY);if(r){S=JSON.parse(r);migrate();if(restoreActive())dirty=true;return}}catch(e){console.warn(e)}S=defaultState();baseHashes();if(restoreActive())dirty=true}
 let saveT,dirty=false;
-function save(){dirty=true;clearTimeout(saveT);saveT=setTimeout(saveNow,120)}
-function saveNow(force){if(!KEY||!S||(!dirty&&!force))return;try{detect();localStorage.setItem(KEY,JSON.stringify(S));dirty=false;syncSoon()}catch(e){toast('Erro ao salvar: '+e.message)}}
+function save(){dirty=true;backupActive();clearTimeout(saveT);saveT=setTimeout(saveNow,120)}
+function saveNow(force){if(!KEY||!S||(!dirty&&!force))return;backupActive();try{detect();localStorage.setItem(KEY,JSON.stringify(S));dirty=false;syncSoon()}catch(e){toast('Erro ao salvar: '+e.message)}}
 function commit(){dirty=true;saveNow()}
 function reloadFromStorage(){if(!KEY||!S||dirty||S.active)return;try{const r=localStorage.getItem(KEY);if(r){S=JSON.parse(r);migrate();render()}}catch(e){}}
 window.addEventListener('pagehide',()=>saveNow());
 window.addEventListener('storage',e=>{if(e.key===KEY)reloadFromStorage()});
-document.addEventListener('visibilitychange',()=>{if(document.hidden)saveNow();else{reloadFromStorage();wake();if(S)render()}});
+document.addEventListener('visibilitychange',()=>{const A=S&&S.active;
+  if(document.hidden){if(A&&S.settings.autoPause&&!A.pausedAt){A.pausedAt=Date.now();A.autoPaused=true;dirty=true}saveNow()}
+  else{if(A&&A.autoPaused&&A.pausedAt){A.pausedMs=(A.pausedMs||0)+(Date.now()-A.pausedAt);A.pausedAt=null;A.autoPaused=false;save()}reloadFromStorage();audio();wake();if(S)render()}});
 const IOS=/iPhone|iPad|iPod/.test(navigator.userAgent),STANDALONE=navigator.standalone===true||matchMedia('(display-mode: standalone)').matches;
 
 /* ---------- registros ---------- */
@@ -680,7 +687,7 @@ VIEWS.hoje=function(){
 /* ---------- TREINO EM ANDAMENTO ---------- */
 function viewWorkout(){
   const A=S.active,p=planById(A.planId,S.lib)||myActive(),w=A.week,ph=p?phaseAt(p,w):{name:'',rir:''},N=p?weeksOf(p):w;
-  let h=`<div class="wk-h"><div class="row"><div class="sp" style="min-width:0"><h1 style="font-size:24px">${esc(A.name)}</h1><div class="mu sm">Sem ${w}/${N} · ${esc(ph.name)} · RIR ${esc(ph.rir||'—')} · <span id="elapsed">${mmss((Date.now()-A.startedAt)/1000)}</span></div></div><button class="btn pri smb" data-act="finish">Finalizar</button></div></div>`;
+  let h=`<div class="wk-h"><div class="row"><div class="sp" style="min-width:0"><h1 style="font-size:24px">${esc(A.name)}</h1><div class="mu sm">Sem ${w}/${N} · ${esc(ph.name)} · RIR ${esc(ph.rir||'—')} · <span id="elapsed">${mmss(elapsedMs(A)/1000)}</span>${A.pausedAt?' <b style="color:var(--warn)">pausado</b>':''}</div></div><button class="ib" data-act="pauseW" aria-label="${A.pausedAt?'Retomar':'Pausar'} cronômetro" style="width:40px;height:38px;font-size:18px;${A.pausedAt?'background:var(--warn);color:#201500':''}">${A.pausedAt?'▶':'⏸'}</button><button class="btn pri smb" data-act="finish">Finalizar</button></div></div>`;
   A.exercises.forEach((ax,i)=>{const f=p&&exIn(p,ax.exId),e=f?f.e:Object.assign({name:ax.name,kind:ax.kind,reps:'',rir:'',rest:'',why:''},defaultsFor(ax.kind));
     const lp=lastPerf(ax.exId,A.id),all=exDone(ax),k=ax.kind,pl=usesLoad(e)?planFor(e,w):null;
     const right=k==='cardio'||k==='wod'||(k==='time'&&pl==null)?`<span class="kd">${KIND_ICON[k]}</span>`:`<div class="kg">${k==='bw'?'Lastro':'Plano'}<b>${pl!=null?fkg(pl)+' kg':(k==='bw'?'PC':'—')}</b></div>`;
@@ -726,23 +733,33 @@ function onWorkoutInput(t,commitKg){const A=S.active;if(!A)return;const d=t.data
   else if(d.wc){ax.cardio[d.wc]=d.wc==='zone'?(t.value||null):num(t.value);const el=$('#pace'+i);if(el)el.textContent=pace(ax.cardio.min,ax.cardio.km)}
   else if(d.ww){const x=ax.wod;if(d.ww==='time')x.time=parseTime(t.value);else if(d.ww==='rx')x.rx=t.value==='1';else if(d.ww==='capped'){x.capped=t.value==='1';save();render();return}else x[d.ww]=num(t.value)}
   save()}
-let AC=null;function audio(){try{AC=AC||new(window.AudioContext||window.webkitAudioContext)();if(AC.state==='suspended')AC.resume()}catch(e){}}
-function beep(){if(!S||!S.settings.sound||!AC)return;try{[0,.3,.6].forEach((t,i)=>{const o=AC.createOscillator(),g=AC.createGain();o.type='sine';o.frequency.value=i===2?1320:880;o.connect(g);g.connect(AC.destination);const st=AC.currentTime+t;g.gain.setValueAtTime(.0001,st);g.gain.exponentialRampToValueAtTime(.5,st+.02);g.gain.exponentialRampToValueAtTime(.0001,st+.25);o.start(st);o.stop(st+.3)})}catch(e){}}
+let AC=null,OUT=null;
+function audio(){try{AC=AC||new(window.AudioContext||window.webkitAudioContext)();if(AC.state!=='running')AC.resume();
+  if(!OUT){const c=AC.createDynamicsCompressor();c.threshold.value=-10;c.knee.value=0;c.ratio.value=4;c.attack.value=0.002;c.release.value=0.1;const g=AC.createGain();g.gain.value=1.6;c.connect(g);g.connect(AC.destination);OUT=c}}catch(e){}}
+function tone(f,at,dur,vol){const o=AC.createOscillator(),g=AC.createGain();o.type='square';o.frequency.value=f;o.connect(g);g.connect(OUT);
+  g.gain.setValueAtTime(0.0001,at);g.gain.exponentialRampToValueAtTime(vol,at+0.012);g.gain.setValueAtTime(vol,at+dur-0.04);g.gain.exponentialRampToValueAtTime(0.0001,at+dur);o.start(at);o.stop(at+dur+0.03)}
+function beep(kind){if(!S||!S.settings.sound)return;audio();if(!AC||!OUT)return;try{const t=AC.currentTime+0.02;
+  if(kind==='warn'){tone(1046,t,0.16,0.9);tone(1046,t+0.24,0.16,0.9)}            // aviso: faltam 5 s
+  else{[0,0.22,0.44].forEach(d=>tone(1568,t+d,0.16,1));tone(2093,t+0.72,0.6,1)}  // fim do descanso
+  }catch(e){}}
 let T=null;
-function startTimer(sec,label,sub,mode){T={end:Date.now()+sec*1000,total:sec,label,sub,fired:false,mode:mode||'rest'};tick()}
-function tick(){const el=$('#elapsed');if(el&&S&&S.active)el.textContent=mmss((Date.now()-S.active.startedAt)/1000);
+function persistTimer(){if(S&&S.active){S.active.timer=T?{end:T.end,total:T.total,label:T.label,sub:T.sub,mode:T.mode,fired:T.fired,warned:T.warned}:null;save()}}
+function restoreTimer(){const t=S&&S.active&&S.active.timer;if(!t||T)return;const left=(t.end-Date.now())/1000;if(left<-90)return;T=Object.assign({},t);if(left<=0)T.fired=true;if(left<=5)T.warned=true}
+function startTimer(sec,label,sub,mode){T={end:Date.now()+sec*1000,total:sec,label,sub,fired:false,warned:sec<=5,mode:mode||'rest'};persistTimer();tick()}
+function tick(){const A=S&&S.active;const el=$('#elapsed');if(el&&A)el.textContent=mmss(elapsedMs(A)/1000);
   const box=$('#timer');if(!T){box.hidden=true;return}box.hidden=false;const left=(T.end-Date.now())/1000;
-  if(left<=0&&!T.fired){T.fired=true;beep();if(navigator.vibrate)navigator.vibrate([200,100,200])}
-  box.classList.toggle('end',left<=0);$('#tt').textContent=left>0?mmss(Math.ceil(left)):'+'+mmss(-left);
-  $('#tlab').textContent=T.mode==='wod'?(left>0?'WOD em andamento':'Tempo!'):(left>0?'Descanso':'Bora! Próxima série');$('#tsub').textContent=T.sub||'';
-  $('#tbar').style.width=Math.max(0,Math.min(100,100*left/T.total))+'%';if(left<-90)T=null}
+  if(left<=5&&left>0&&!T.warned){T.warned=true;if(S.settings.warn5!==false)beep('warn');persistTimer()}
+  if(left<=0&&!T.fired){T.fired=true;beep('end');if(navigator.vibrate)navigator.vibrate([300,120,300]);persistTimer()}
+  box.classList.toggle('end',left<=0);box.classList.toggle('warn5',left>0&&left<=5);$('#tt').textContent=left>0?mmss(Math.ceil(left)):'+'+mmss(-left);
+  $('#tlab').textContent=T.mode==='wod'?(left>0?'WOD em andamento':'Tempo!'):(left>0?(left<=5?'Prepare-se!':'Descanso'):'Bora! Próxima série');$('#tsub').textContent=T.sub||'';
+  $('#tbar').style.width=Math.max(0,Math.min(100,100*left/T.total))+'%';if(left<-90){T=null;persistTimer()}}
 setInterval(tick,250);
 let WL=null;async function wake(){try{if(S&&S.settings.wake&&S.active&&'wakeLock'in navigator&&!document.hidden&&!WL){WL=await navigator.wakeLock.request('screen');WL.addEventListener('release',()=>WL=null)}if(WL&&(!S||!S.active||!S.settings.wake)){WL.release();WL=null}}catch(e){}}
 function finishWorkout(){const A=S.active;
   const ex=A.exercises.filter(exHasData).map(x=>{const o={exId:x.exId,cat:x.cat,name:x.name,kind:x.kind};
     if(x.kind==='cardio'){o.cardio=x.cardio;o.done=true;o.sets=[]}else if(x.kind==='wod'){o.wod=x.wod;o.done=true;o.sets=[]}
     else o.sets=x.sets.filter(s=>s.done).map(s=>({kg:s.kg,reps:s.reps,rir:s.rir,sec:s.sec}));return o});
-  const L={id:A.id,planId:A.planId,planName:A.planName,round:A.round||1,sessionId:A.sessionId,name:A.name,date:A.date,week:A.week,startedAt:A.startedAt,finishedAt:Date.now(),note:A.note||'',exercises:ex};
+  const L={id:A.id,planId:A.planId,planName:A.planName,round:A.round||1,sessionId:A.sessionId,name:A.name,date:A.date,week:A.week,startedAt:A.startedAt,finishedAt:Date.now(),durationSec:Math.round(elapsedMs(A)/1000),note:A.note||'',exercises:ex};
   S.logs.push(L);markLog(L.id);sortLogs();S.active=null;T=null;let msg='Treino salvo 💪';
   const p=planById(L.planId,S.lib);
   if(p&&p.id===S.lib.activeId){const pr=progOf(p),N=weeksOf(p);
@@ -934,11 +951,11 @@ VIEWS.evo=function({id}){const f=findExAny(id);return hdr(f?f.e.name:'Evolução
 VIEWS.historico=function(){let h=hdr('Histórico',`${S.logs.length} treino${S.logs.length===1?'':'s'}`,false,syncBadge());
   if(!S.logs.length)return h+'<div class="empty">Nenhum treino ainda.<br>Comece pela aba <b>Hoje</b>.</div>';
   let curM='';S.logs.slice().reverse().forEach(L=>{const m=pISO(L.date).toLocaleDateString('pt-BR',{month:'long',year:'numeric'});if(m!==curM){if(curM)h+='</div>';h+=`<h3>${esc(m)}</h3><div class="card" style="padding:4px 14px">`;curM=m}
-    const dur=L.finishedAt&&L.startedAt?Math.round((L.finishedAt-L.startedAt)/60000):null;const ns=L.exercises.reduce((a,x)=>a+(x.kind==='cardio'||x.kind==='wod'?1:doneSets(x).length),0);const vol=logVolume(L);
+    const dur=L.durationSec!=null?Math.round(L.durationSec/60):L.finishedAt&&L.startedAt?Math.round((L.finishedAt-L.startedAt)/60000):null;const ns=L.exercises.reduce((a,x)=>a+(x.kind==='cardio'||x.kind==='wod'?1:doneSets(x).length),0);const vol=logVolume(L);
     h+=`<div class="li tap" data-act="openLog" data-id="${L.id}"><span class="pill" style="min-width:52px;text-align:center">${dshort(L.date)}</span><div class="t"><b>${esc(L.name)}</b><span class="mu sm">${esc(L.planName||'')} · S${L.week} · ${ns} séries/blocos${vol?' · '+(vol/1000).toLocaleString('pt-BR',{maximumFractionDigits:1})+' t':''}${dur?` · ${dur} min`:''}</span></div><span class="mu">›</span></div>`});
   return h+'</div>'};
 VIEWS.log=function({id}){const L=S.logs.find(l=>l.id===id);if(!L)return hdr('Registro','',true)+'<div class="empty">Não encontrado</div>';
-  const dur=L.finishedAt&&L.startedAt?Math.round((L.finishedAt-L.startedAt)/60000):null;
+  const dur=L.durationSec!=null?Math.round(L.durationSec/60):L.finishedAt&&L.startedAt?Math.round((L.finishedAt-L.startedAt)/60000):null;
   let h=hdr(L.name,`${dlong(L.date)} · ${esc(L.planName||'')} · S${L.week}${dur?` · ${dur} min`:''}`,true);
   h+=`<p class="mu sm">Toque nos valores para corrigir.</p>`;
   L.exercises.forEach((x,i)=>{h+=`<div class="card ex"><b>${KIND_ICON[x.kind]||''} ${esc(x.name)}</b>`;
@@ -954,7 +971,9 @@ VIEWS.ajustes=function(){const st=S.settings,p=myActive();
   let h=hdr('Ajustes','Versão '+APP_VERSION,false,syncBadge());
   if(p){const w=progOf(p).week,N=weeksOf(p);h+=`<h3>Plano ativo</h3><div class="card"><div class="b">${esc(p.name)}</div><p class="sm mu">A semana avança sozinha quando você completa todos os treinos. Use os botões só para corrigir.</p>
     <div class="row"><button class="btn smb" data-act="shiftWeek" data-d="-1">◀ Voltar</button><div class="sp" style="text-align:center"><b>Semana ${Math.min(w,N+1)}</b><div class="mu xs">${w<=N?esc(phaseAt(p,w).name):'concluído'}</div></div><button class="btn smb" data-act="shiftWeek" data-d="1">Avançar ▶</button></div></div>`}
-  h+=`<h3>Durante o treino</h3><div class="card" style="padding:4px 14px"><div class="sw"><span>Som ao fim do descanso</span><input type="checkbox" data-sf="sound" ${st.sound?'checked':''}></div><div class="sw"><span>Manter tela ligada</span><input type="checkbox" data-sf="wake" ${st.wake?'checked':''}></div></div>`;
+  h+=`<h3>Durante o treino</h3><div class="card" style="padding:4px 14px"><div class="sw"><span>Som ao fim do descanso</span><input type="checkbox" data-sf="sound" ${st.sound?'checked':''}></div><div class="sw"><span>Aviso faltando 5 segundos</span><input type="checkbox" data-sf="warn5" ${st.warn5!==false?'checked':''}></div><div class="sw"><span>Manter tela ligada</span><input type="checkbox" data-sf="wake" ${st.wake?'checked':''}></div>
+    <div class="sw"><span>Pausar o cronômetro do treino ao sair da tela<div class="mu xs">Pausa ao bloquear o celular <b>e</b> ao trocar de app (o iPhone não diferencia os dois). Você também pode pausar manualmente no ⏸.</div></span><input type="checkbox" data-sf="autoPause" ${st.autoPause?'checked':''}></div>
+    <div style="padding:10px 0"><button class="btn block" data-act="testSound">🔊 Testar alertas sonoros</button><div class="mu xs" style="margin-top:6px">Se não ouvir: aumente o volume e confira se o iPhone não está no modo silencioso.</div></div></div>`;
   h+=`<h3>Conta</h3><div class="card"><div class="b">${esc(ME.name||'')}${ME.role==='master'?' <span class="pill" style="background:var(--ac);color:#1d0d03">master</span>':''}</div><div class="mu sm">${esc(ME.email||'')}</div><div class="sm" style="margin:8px 0">${syncText()}</div>
     <button class="btn block" data-act="syncNow">Sincronizar agora</button>${ME.role==='master'?'<div style="height:8px"></div><button class="btn pri block" data-act="openUsers">👥 Gerenciar usuários</button>':''}<div style="height:8px"></div><button class="btn block" data-act="logout" style="color:var(--bad)">Sair da conta</button></div>`;
   h+=`<h3>Backup extra</h3><div class="card"><p class="sm mu" style="margin-top:0">Seus dados ficam na nuvem e neste aparelho. O arquivo é uma cópia extra.${st.lastBackup?` Último: ${new Date(st.lastBackup).toLocaleDateString('pt-BR')}.`:''}</p>
@@ -969,7 +988,7 @@ function onImport(inp){const file=inp.files[0];inp.value='';if(!file)return;cons
 
 /* ================= NUVEM: login, sincronização e painel master ================= */
 function hsh(str){let h=5381;for(let i=0;i<str.length;i++)h=((h<<5)+h+str.charCodeAt(i))|0;return h.toString(36)+':'+str.length}
-function stateDoc(){return{v:3,prog:S.prog,settings:S.settings}}
+function stateDoc(){return{v:3,prog:S.prog,settings:S.settings,active:S.active||null}}
 function baseHashes(){const y=S._sync;y.progH=hsh(JSON.stringify(S.lib));y.stateH=hsh(JSON.stringify(stateDoc()))}
 function detect(){const y=S._sync;const ph=hsh(JSON.stringify(S.lib));if(ph!==y.progH){y.progH=ph;y.progEd=Date.now();y.progDirty=true}
   const sh=hsh(JSON.stringify(stateDoc()));if(sh!==y.stateH){y.stateH=sh;y.stateEd=Date.now();y.stateDirty=true}}
@@ -981,6 +1000,7 @@ function syncBadge(){const p=pending();let c,t;if(!navigator.onLine){c='var(--mu
   return`<button class="sync" data-act="syncNow" title="Sincronizar"><i style="background:${c}"></i>${t}</button>`}
 function syncText(){const y=S&&S._sync;const p=pending();
   return`${y&&y.lastSync?'Última sincronização: '+new Date(y.lastSync).toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}):'Ainda não sincronizado'}${p?` · <b style="color:var(--warn)">${p} alteração(ões) aguardando envio</b>`:''}${SYNC_ERR?`<br><span style="color:var(--bad)">${esc(SYNC_ERR)}</span>`:''}`}
+let RESUMED=false;
 function refreshBadges(){document.querySelectorAll('.sync').forEach(b=>b.outerHTML=syncBadge())}
 
 function sbInit(){if(!SB&&window.supabase&&/^https?:/.test(SB_URL))SB=window.supabase.createClient(SB_URL,SB_KEY,{auth:{persistSession:true,autoRefreshToken:true,storageKey:'treino.auth',detectSessionInUrl:false}});return SB}
@@ -1010,7 +1030,7 @@ async function sync(manual){
     const{data:doc,error:de}=await SB.from('user_docs').select('program,program_edited,state,state_edited').eq('user_id',uid).maybeSingle();if(de)throw de;
     if(doc){
       if(+doc.program_edited>y.progEd&&!y.progDirty){const lib=libFrom(doc.program);if(lib){S.lib=lib;migrate();y.progEd=+doc.program_edited;y.progH=hsh(JSON.stringify(S.lib));changed=true}}
-      if(+doc.state_edited>y.stateEd&&!y.stateDirty&&doc.state&&doc.state.prog&&!S.active){const st=doc.state;S.prog=st.prog||S.prog;S.settings=Object.assign(S.settings,st.settings||{});migrate();y.stateEd=+doc.state_edited;y.stateH=hsh(JSON.stringify(stateDoc()));changed=true}
+      if(+doc.state_edited>y.stateEd&&!y.stateDirty&&doc.state&&doc.state.prog){const st=doc.state;S.prog=st.prog||S.prog;S.settings=Object.assign(S.settings,st.settings||{});const ra=st.active;if(ra&&ra.id&&!S.logs.some(L=>L.id===ra.id)&&(!S.active||S.active.id===ra.id)){const was=!!S.active;S.active=ra;restoreTimer();if(!was)RESUMED=true}migrate();y.stateEd=+doc.state_edited;y.stateH=hsh(JSON.stringify(stateDoc()));changed=true}
     }
     // baixa treinos novos/alterados
     const since=y.lastPull?new Date(Date.parse(y.lastPull)-5*60e3).toISOString():'1970-01-01T00:00:00Z';let from=0,maxU=y.lastPull;
@@ -1026,7 +1046,7 @@ async function sync(manual){
     if(!y.lastSeen||Date.now()-y.lastSeen>10*60e3){SB.from('profiles').update({last_seen_at:new Date().toISOString()}).eq('id',uid).then(()=>{});y.lastSeen=Date.now()}
     y.lastSync=Date.now();SYNC_ERR=null;dirty=true;saveNow();
   }catch(e){console.warn('sync',e);SYNC_ERR=friendlyErr(e);if(manual)toast('Não sincronizou: '+SYNC_ERR)}
-  finally{SYNCING=false;if(changed&&!document.querySelector('input:focus'))render();else refreshBadges();if(manual&&!SYNC_ERR)toast('Sincronizado ✓')}
+  finally{SYNCING=false;if(S&&S.active&&S.logs.some(L=>L.id===S.active.id)){S.active=null;T=null;changed=true}if(changed&&!document.querySelector('input:focus'))render();else refreshBadges();if(RESUMED){RESUMED=false;backupActive();V.tab='hoje';V.stack=[];render();toast('Treino em andamento retomado 💪')}if(manual&&!SYNC_ERR)toast('Sincronizado ✓')}
 }
 function friendlyErr(e){const m=String(e&&(e.message||e.error_description||e)||'');
   if(/JWT|token|401|session/i.test(m))return'sessão expirada — saia e entre novamente';if(/Failed to fetch|NetworkError|network/i.test(m))return'sem conexão com o servidor';return m.slice(0,140)}
@@ -1055,7 +1075,7 @@ async function doLogin(){const em=($('#lgEmail').value||'').trim().toLowerCase()
     if(pe||!p){msg.textContent='Perfil não encontrado.';await SB.auth.signOut({scope:'local'});return}
     if(!p.active){msg.textContent='Usuário desativado.';await SB.auth.signOut({scope:'local'});return}
     ME=p;localStorage.setItem('treino.me',JSON.stringify(ME));localStorage.setItem('treino.lastEmail',em);
-    loadUser();V.tab='hoje';V.stack=[];render();await sync();await offerLegacy();render();wake();
+    loadUser();if(S.active)restoreTimer();V.tab='hoje';V.stack=[];render();await sync();await offerLegacy();render();wake();
   }catch(e){msg.textContent=friendlyErr(e)}finally{if(btn.isConnected){btn.disabled=false;btn.textContent='Entrar'}}}
 async function offerLegacy(){let L;try{L=JSON.parse(localStorage.getItem('treino.v1')||'null')}catch(e){}
   if(!L)return;const isM=ME.role==='master';const lib=libFrom(L.program);const lp=lib&&lib.plans[0];
@@ -1153,12 +1173,14 @@ Object.assign(ACT,{
     const e=f.e,before=e.plan.slice();shiftFuture(e,p,sg.act.from,sg.act.delta);const rows=[];for(let k=sg.act.from;k<=weeksOf(p);k++)if(before[k-1]!==e.plan[k-1])rows.push([`S${k}`,fkg(before[k-1]),`<b>${fkg(e.plan[k-1])}</b>`]);
     e.plan=before;confirmBox('Ajustar plano',`<p>${esc(e.name)}</p>${diffTable(rows,['Semana','Antes','Depois'])}`,'Aplicar',()=>{shiftFuture(e,p,sg.act.from,sg.act.delta);ax.applied=true;save();render();toast('Plano ajustado')})},
   finish:()=>{const A=S.active;const ok=A.exercises.filter(exHasData).length;
-    if(!ok){confirmBox('Nada registrado','Nenhuma série ou bloco foi concluído. Deseja descartar este treino?','Descartar',()=>{S.active=null;T=null;save();wake();render()},true);return}
+    if(!ok){confirmBox('Nada registrado','Nenhuma série ou bloco foi concluído. Deseja descartar este treino?','Descartar',()=>{S.active=null;T=null;save();saveNow();wake();render()},true);return}
     const pend=A.exercises.filter(x=>!exDone(x)).length;
-    confirmBox('Finalizar treino',`<p><b>${ok}</b> de ${A.exercises.length} exercícios com registro · ${mmss((Date.now()-A.startedAt)/1000)} de treino.</p>${pend?'<p class="mu sm">Séries/blocos sem ✓ não serão salvos.</p>':''}`,'Salvar treino',finishWorkout)},
-  discard:()=>confirmBox('Descartar treino','Tudo que foi registrado neste treino será perdido.','Descartar',()=>{S.active=null;T=null;save();wake();render()},true),
-  tAdd:d=>{if(T){T.end+=(+d.s)*1000;T.total=Math.max(T.total,(T.end-Date.now())/1000);if(T.end>Date.now())T.fired=false;tick()}},
-  tClose:()=>{T=null;tick()},
+    confirmBox('Finalizar treino',`<p><b>${ok}</b> de ${A.exercises.length} exercícios com registro · ${mmss(elapsedMs(A)/1000)} de treino.</p>${pend?'<p class="mu sm">Séries/blocos sem ✓ não serão salvos.</p>':''}`,'Salvar treino',finishWorkout)},
+  discard:()=>confirmBox('Descartar treino','Tudo que foi registrado neste treino será perdido.','Descartar',()=>{S.active=null;T=null;save();saveNow();wake();render()},true),
+  tAdd:d=>{if(T){T.end+=(+d.s)*1000;T.total=Math.max(T.total,(T.end-Date.now())/1000);const left=(T.end-Date.now())/1000;if(left>0)T.fired=false;if(left>5)T.warned=false;persistTimer();tick()}},
+  tClose:()=>{T=null;persistTimer();tick()},
+  pauseW:()=>{const A=S.active;if(!A)return;if(A.pausedAt){A.pausedMs=(A.pausedMs||0)+(Date.now()-A.pausedAt);A.pausedAt=null;A.autoPaused=false;toast('Cronômetro retomado')}else{A.pausedAt=Date.now();toast('Cronômetro pausado')}save();render()},
+  testSound:()=>{audio();beep('warn');setTimeout(()=>beep('end'),900)},
   advWeek:()=>{const p=myActive(),pr=progOf(p),done=doneThisWeek(p),miss=p.sessions.filter(s=>!done.has(s.id)).map(s=>esc(s.name));const N=weeksOf(p);
     confirmBox(`Encerrar semana ${pr.week}`,`<p>Ir para a <b>semana ${pr.week+1}</b>${pr.week<N?' ('+esc(phaseAt(p,pr.week+1).name)+')':''} sem fazer: ${miss.join(', ')||'—'}?</p>`,'Avançar semana',()=>{pr.week++;if(pr.week>N&&p.repeat){pr.week=1;pr.round=(pr.round||1)+1}save();render();toast(pr.week>N?'Plano concluído':'Semana '+pr.week+' · '+phaseAt(p,pr.week).name)})},
   shiftWeek:d=>{const p=myActive();if(!p)return;const pr=progOf(p);pr.week=Math.min(weeksOf(p)+1,Math.max(1,pr.week+(+d.d)));save();render()},
@@ -1172,6 +1194,7 @@ Object.assign(ACT,{
 });
 
 /* ---------- eventos ---------- */
+document.addEventListener('touchend',()=>{if(S&&S.active)audio()},{passive:true});
 document.addEventListener('click',ev=>{const b=ev.target.closest('[data-act]');if(!b)return;const f=ACT[b.dataset.act];if(f){ev.preventDefault();f(b.dataset,b)}});
 document.addEventListener('input',ev=>{const t=ev.target,d=t.dataset;
   if(d.wf||d.wc||(d.ww&&d.ww!=='capped'&&t.tagName!=='SELECT'))onWorkoutInput(t,false);
@@ -1206,7 +1229,7 @@ document.addEventListener('change',ev=>{const t=ev.target,d=t.dataset;
   try{ME=JSON.parse(localStorage.getItem('treino.me')||'null')}catch(e){ME=null}
   try{CUSTOM_CAT=JSON.parse(localStorage.getItem('treino.cat')||'[]')}catch(e){CUSTOM_CAT=[]}
   sbInit();
-  if(ME){loadUser();}
+  if(ME){loadUser();if(S&&S.active){restoreTimer();setTimeout(()=>toast('Treino em andamento retomado 💪'),300)}}
   render();wake();
   if(SB){
     SB.auth.onAuthStateChange(ev=>{if(ev==='SIGNED_OUT'&&ME&&navigator.onLine){toast('Sessão encerrada — entre novamente');const keep=pending();ME=null;KEY=null;S=null;localStorage.removeItem('treino.me');render();if(keep)toast('Seus dados pendentes continuam guardados')}});
