@@ -464,8 +464,34 @@ const KIND_LABEL={load:'Carga × reps',bw:'Peso corporal (reps)',time:'Tempo (se
 const KIND_ICON={load:'🏋️',bw:'🤸',time:'⏱️',cardio:'🏃',wod:'🔥'};
 const CATALOG=CATALOG_RAW.split('\n').map((l,i)=>{const[n,c,g,e,k]=l.split('|');return{id:'c_'+n.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,''),name:n,cat:CATN[c],grp:g,eq:e,kind:KIND[k]}});
 
+/* ===== Modelos de treinos (sequências prontas) =====
+   Cada exercício: [nome no banco, séries, reps, descanso(seg)] — RIR padrão 2 (core sem RIR). */
+const WORKOUT_TEMPLATES={
+  split5:{name:'Split 5 dias — Peito/Tríceps · Costas/Bíceps · Pernas · Ombros/Abdômen · Full Body',sessions:[
+    {name:'Peito e Tríceps',groups:'Peito · Tríceps',duration:'60–70 min',ex:[
+      ['Supino Reto com Barra',4,'8–12',120],['Supino Inclinado com Halteres',4,'10–12',90],['Crucifixo na Máquina (Peck Deck)',3,'12–15',60],
+      ['Crossover Polia Média',3,'12–15',60],['Tríceps Pulley (corda)',4,'10–12',60],['Tríceps Francês com Halter',3,'10–12',60],['Mergulho no Banco',3,'12–15',60]]},
+    {name:'Costas e Bíceps',groups:'Costas · Bíceps',duration:'60–70 min',ex:[
+      ['Puxada Frontal Pronada',4,'8–12',90],['Remada Curvada com Barra Pronada',4,'8–12',120],['Remada Sentada na Polia (triângulo)',3,'10–12',90],
+      ['Pulldown com Corda (braços estendidos)',3,'12–15',60],['Rosca Direta com Barra',4,'10–12',60],['Rosca Alternada com Halteres',3,'10–12',60],['Rosca Martelo',3,'12–15',60]]},
+    {name:'Pernas e Glúteos',groups:'Quadríceps · Posterior · Glúteos · Panturrilha',duration:'70–80 min',ex:[
+      ['Agachamento Livre com Barra',4,'8–12',150],['Leg Press 45°',4,'10–12',120],['Cadeira Extensora',3,'12–15',60],['Mesa Flexora (deitado)',3,'12–15',60],
+      ['Levantamento Terra Romeno (Stiff)',4,'10–12',120],['Hip Thrust com Barra',4,'10–12',90],['Panturrilha em Pé na Máquina',4,'15–20',45]]},
+    {name:'Ombros e Abdômen',groups:'Ombros · Trapézio · Core',duration:'55–65 min',ex:[
+      ['Desenvolvimento com Halteres',4,'8–12',90],['Elevação Lateral com Halteres',4,'12–15',60],['Elevação Frontal com Halteres',3,'12–15',60],
+      ['Crucifixo Inverso com Halteres',3,'12–15',60],['Encolhimento com Halteres',4,'12–15',60],['Prancha Frontal',3,'30–60',45],['Abdominal Infra (elevação de quadril)',3,'15–20',45]]},
+    {name:'Full Body',groups:'Corpo inteiro',duration:'60–70 min',ex:[
+      ['Agachamento Livre com Barra',3,'10',120],['Supino Reto com Barra',3,'10',90],['Puxada Frontal Pronada',3,'10',90],['Desenvolvimento com Barra (militar)',3,'10',90],
+      ['Levantamento Terra Romeno (Stiff)',3,'10',90],['Rosca Direta com Barra',3,'12',60],['Tríceps Pulley (corda)',3,'12',60],['Abdominal na Máquina',3,'15',45]]},
+  ]},
+};
+function sessionsFromTemplate(key,p){const t=WORKOUT_TEMPLATES[key];if(!t)return[];
+  return t.sessions.map(s=>({id:uid36('s'),name:s.name,groups:s.groups,duration:s.duration,notes:'',cardio:'',exercises:s.ex.map(([n,sets,reps,rest])=>{
+    const c=CATALOG.find(x=>x.name===n);if(!c)throw new Error('Exercício não encontrado no banco: '+n);const it=makeItem(c,p);
+    it.sets=sets;it.reps=reps;it.restSec=rest;it.rest=rest>=120?(rest/60)+' min':rest+' s';it.rir=it.kind==='time'||c.cat==='Core'?'':'RIR 2';return it})}))}
+
 "use strict";
-const APP_VERSION='3.2.1';
+const APP_VERSION='3.3.0';
 const SB_URL='https://zmiupzagkipjyaabzihx.supabase.co',SB_KEY='sb_publishable_G8TxNzbpzE_llnFnk5cXQg_4tCRcPDe',MASTER_HISTORY=true;
 const $=s=>document.querySelector(s);
 let S=null,KEY=null,ME=null,SB=null,MANAGE=null,USERS=null,CUSTOM_CAT=[];
@@ -865,10 +891,10 @@ function planOf(d){return planById(d.pid)}
 function bestInRange(itemId,planId,e,p){const[lo]=range(e.reps);let best=null;S.logs.filter(L=>L.planId===planId).forEach(L=>{if(phaseAt(p,L.week).mode==='deload')return;const x=L.exercises.find(x=>x.exId===itemId);if(x)doneSets(x).forEach(s=>{if(s.reps>=lo&&s.kg!=null&&(best==null||s.kg>best))best=s.kg})});return best}
 
 Object.assign(ACT,{
-  newPlan:()=>{const lib=LIB();const src=[['blank','Em branco']].concat(lib.plans.map(p=>[p.id,'Copiar treinos de: '+p.name])).concat(U()&&myActive()?[['mine','Copiar treinos do MEU plano ativo']]:[]);
+  newPlan:()=>{const lib=LIB();const src=[['blank','Em branco']].concat(Object.entries(WORKOUT_TEMPLATES).map(([k,t])=>['tpl:'+k,'Modelo pronto: '+t.name])).concat(lib.plans.map(p=>[p.id,'Copiar treinos de: '+p.name])).concat(U()&&myActive()?[['mine','Copiar treinos do MEU plano ativo']]:[]);
     modal('Novo plano',`<label class="f"><span>Nome</span><input id="npName" placeholder="ex: Hipertrofia 2027 — Bloco 1"></label><label class="f"><span>Periodização</span><select id="npTpl">${Object.entries(PERIOD_TEMPLATES).map(([k,t])=>`<option value="${k}">${esc(t.name)}</option>`).join('')}</select></label><label class="f"><span>Treinos</span>${sel('',src,'blank','id="npSrc"')}</label><p class="mu xs">Você pode ajustar fases e semanas depois. Ao copiar treinos, as cargas são recalculadas para a nova periodização.</p>`,
     [{label:'Cancelar'},{label:'Criar',cls:'pri',fn:()=>{const p=newPlan($('#npName').value.trim()||'Novo plano',$('#npTpl').value);const sv=$('#npSrc').value;
-      const q=sv==='mine'?myActive():sv!=='blank'?planById(sv,lib):null;
+      if(sv.startsWith('tpl:'))p.sessions=sessionsFromTemplate(sv.slice(4),p);const q=sv==='mine'?myActive():sv!=='blank'&&!sv.startsWith('tpl:')?planById(sv,lib):null;
       if(q){p.sessions=clone(q.sessions);if(sv!=='mine'){p.tips=clone(q.tips||[]);p.nutrition=clone(q.nutrition||[])}p.sessions.forEach(s=>s.exercises.forEach(e=>{if(usesLoad(e))e.plan=e.base!=null?genPlan(e.base,e.inc,p):Array(weeksOf(p)).fill(null)}))}
       lib.plans.push(p);if(!planById(lib.activeId,lib))lib.activeId=p.id;psave();go('plan',{id:p.id,uid:U()});toast('Plano criado')}}])},
   activatePlan:d=>{const lib=LIB(),p=planOf(d);const done=()=>{lib.activeId=p.id;psave();render();toast(p.name+' agora é o plano ativo')};
