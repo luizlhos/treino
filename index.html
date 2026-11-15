@@ -467,7 +467,7 @@ const CATALOG=CATALOG_RAW.split('\n').map((l,i)=>{const[n,c,g,e,k]=l.split('|');
 /* ===== Modelos de treinos (sequências prontas) =====
    Cada exercício: [nome no banco, séries, reps, descanso(seg)] — RIR padrão 2 (core sem RIR). */
 const WORKOUT_TEMPLATES={
-  split5:{name:'Split 5 dias — Peito/Tríceps · Costas/Bíceps · Pernas · Ombros/Abdômen · Full Body',sessions:[
+  split5:{name:'Split 5 treinos · Peito/Tríceps, Costas/Bíceps, Pernas, Ombros/Abdômen, Full Body',sessions:[
     {name:'Peito e Tríceps',groups:'Peito · Tríceps',duration:'60–70 min',ex:[
       ['Supino Reto com Barra',4,'8–12',120],['Supino Inclinado com Halteres',4,'10–12',90],['Crucifixo na Máquina (Peck Deck)',3,'12–15',60],
       ['Crossover Polia Média',3,'12–15',60],['Tríceps Pulley (corda)',4,'10–12',60],['Tríceps Francês com Halter',3,'10–12',60],['Mergulho no Banco',3,'12–15',60]]},
@@ -491,7 +491,7 @@ function sessionsFromTemplate(key,p){const t=WORKOUT_TEMPLATES[key];if(!t)return
     it.sets=sets;it.reps=reps;it.restSec=rest;it.rest=rest>=120?(rest/60)+' min':rest+' s';it.rir=it.kind==='time'||c.cat==='Core'?'':'RIR 2';return it})}))}
 
 "use strict";
-const APP_VERSION='3.3.0';
+const APP_VERSION='3.3.1';
 const SB_URL='https://zmiupzagkipjyaabzihx.supabase.co',SB_KEY='sb_publishable_G8TxNzbpzE_llnFnk5cXQg_4tCRcPDe',MASTER_HISTORY=true;
 const $=s=>document.querySelector(s);
 let S=null,KEY=null,ME=null,SB=null,MANAGE=null,USERS=null,CUSTOM_CAT=[];
@@ -524,29 +524,29 @@ function norm(s){return String(s||'').toLowerCase().normalize('NFD').replace(/[�
 const PHASE_COLORS=[['acu','Azul'],['int','Laranja'],['pk','Vermelho'],['dl','Verde'],['vio','Roxo'],['tea','Turquesa'],['yel','Amarelo']];
 const MODES={inc:'Subir carga (× incremento/semana)',pct:'Subir % por semana',hold:'Manter carga',deload:'Deload (% do pico)'};
 const PERIOD_TEMPLATES={
-  hip12:{name:'Hipertrofia em blocos — 12 semanas',repeat:false,phases:[
+  hip12:{name:'Hipertrofia em blocos · 12 semanas',repeat:false,phases:[
     {name:'Acumulação',weeks:4,rir:'3–4',mode:'inc',step:1,hold:2,vol:1,color:'acu',focus:'Volume alto, técnica e progressão dupla'},
     {name:'Intensificação',weeks:4,rir:'1–2',mode:'inc',step:2,hold:0,vol:1,color:'int',focus:'Carga sobe mais rápido — PRs de repetição'},
     {name:'Peaking',weeks:3,rir:'0–1',mode:'inc',step:2,hold:0,vol:0.85,color:'pk',focus:'Cargas máximas nos compostos'},
     {name:'Deload',weeks:1,rir:'4–5',mode:'deload',step:60,hold:0,vol:0.5,color:'dl',focus:'Recuperação — metade das séries'}]},
-  lin8:{name:'Linear — 8 semanas',repeat:false,phases:[
+  lin8:{name:'Linear · 8 semanas',repeat:false,phases:[
     {name:'Base',weeks:3,rir:'2–3',mode:'inc',step:1,hold:1,vol:1,color:'acu',focus:'Ajustar cargas e técnica'},
     {name:'Progressão',weeks:4,rir:'1–2',mode:'inc',step:1,hold:0,vol:1,color:'int',focus:'Subir carga toda semana'},
     {name:'Deload',weeks:1,rir:'4',mode:'deload',step:60,hold:0,vol:0.5,color:'dl',focus:'Recuperação'}]},
-  ini4:{name:'Iniciante — 4 semanas',repeat:false,phases:[
+  ini4:{name:'Iniciante · 4 semanas',repeat:false,phases:[
     {name:'Adaptação',weeks:4,rir:'3',mode:'inc',step:1,hold:1,vol:1,color:'acu',focus:'Aprender os movimentos, sem chegar perto da falha'}]},
-  for6:{name:'Força — 6 semanas',repeat:false,phases:[
+  for6:{name:'Força · 6 semanas',repeat:false,phases:[
     {name:'Volume',weeks:3,rir:'2',mode:'inc',step:1,hold:0,vol:1,color:'acu',focus:'Mais séries, carga moderada'},
     {name:'Intensidade',weeks:2,rir:'1',mode:'inc',step:2,hold:0,vol:0.8,color:'pk',focus:'Menos séries, carga alta'},
     {name:'Deload',weeks:1,rir:'4',mode:'deload',step:60,hold:0,vol:0.5,color:'dl',focus:'Recuperação'}]},
-  ond9:{name:'Ondulatória (ondas) — 9 semanas',repeat:false,phases:[
+  ond9:{name:'Ondulatória (ondas) · 9 semanas',repeat:false,phases:[
     {name:'Onda 1',weeks:2,rir:'2',mode:'inc',step:1,hold:0,vol:1,color:'acu',focus:''},
     {name:'Recuo',weeks:1,rir:'3',mode:'pct',step:-5,hold:0,vol:0.8,color:'tea',focus:'Alivia um pouco antes da próxima onda'},
     {name:'Onda 2',weeks:2,rir:'1–2',mode:'inc',step:1.5,hold:0,vol:1,color:'int',focus:''},
     {name:'Recuo',weeks:1,rir:'3',mode:'pct',step:-5,hold:0,vol:0.8,color:'tea',focus:''},
     {name:'Onda 3',weeks:2,rir:'0–1',mode:'inc',step:2,hold:0,vol:1,color:'pk',focus:''},
     {name:'Deload',weeks:1,rir:'4',mode:'deload',step:60,hold:0,vol:0.5,color:'dl',focus:'Recuperação'}]},
-  man4:{name:'Manutenção contínua — 4 semanas (repete)',repeat:true,phases:[
+  man4:{name:'Manutenção contínua · 4 semanas (repete)',repeat:true,phases:[
     {name:'Manutenção',weeks:4,rir:'2–3',mode:'hold',step:0,hold:0,vol:1,color:'tea',focus:'Manter força e massa, sem pressa'}]},
 };
 function weeksOf(p){return(p&&p.phases||[]).reduce((a,ph)=>a+(+ph.weeks||0),0)||1}
