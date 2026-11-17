@@ -101,6 +101,7 @@ label.f{display:block;margin:10px 0}label.f>span{display:block;font-size:12px;co
 .stat{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
 .stat div{background:var(--s1);border-radius:14px;padding:10px}
 .stat b{display:block;font-size:20px}.stat span{font-size:11px;color:var(--mu)}
+.hl{display:flex;gap:12px;align-items:flex-start;padding:8px 0;border-top:1px solid var(--s3)}.hl:first-child{border-top:0}.hi{flex:none;min-width:58px;text-align:center;font-size:14px;padding-top:2px}
 details{background:var(--s1);border-radius:var(--r);padding:12px 14px;margin:10px 0}
 summary{font-weight:600;cursor:pointer}
 details p{font-size:14px;margin:8px 0;color:#cfd3dc}
@@ -492,7 +493,7 @@ function sessionsFromTemplate(key,p){const t=WORKOUT_TEMPLATES[key];if(!t)return
     it.sets=sets;it.reps=reps;it.restSec=rest;it.rest=rest>=120?(rest/60)+' min':rest+' s';it.rir=it.kind==='time'||c.cat==='Core'?'':'RIR 2';return it}})}))}
 
 "use strict";
-const APP_VERSION='3.4.1';
+const APP_VERSION='3.6.0';
 const SB_URL='https://zmiupzagkipjyaabzihx.supabase.co',SB_KEY='sb_publishable_G8TxNzbpzE_llnFnk5cXQg_4tCRcPDe',MASTER_HISTORY=true;
 const $=s=>document.querySelector(s);
 let S=null,KEY=null,ME=null,SB=null,MANAGE=null,USERS=null,CUSTOM_CAT=[];
@@ -563,6 +564,11 @@ function fitPlans(p){const N=weeksOf(p);p.sessions.forEach(s=>s.exercises.forEac
   if(p.weekNotes){if(p.weekNotes.length>N)p.weekNotes.length=N}}
 function recalcDeload(e,p){let w=0,peak=null;const N=weeksOf(p);for(const ph of p.phases)for(let k=0;k<ph.weeks;k++){w++;const v=e.plan[w-1];if(ph.mode!=='deload'&&v!=null)peak=Math.max(peak??0,v)}
   w=0;for(const ph of p.phases)for(let k=0;k<ph.weeks;k++){w++;if(ph.mode==='deload'&&peak!=null)e.plan[w-1]=rstep(peak*(+ph.step||60)/100,e.inc||2.5)}}
+function planEmpty(e){return !e.plan||e.plan.every(v=>v==null||v==='')}
+function fillPlanFromLog(p,L){const out=[];if(!p||phaseAt(p,L.week).mode==='deload')return out;
+  for(const x of L.exercises){if(x.kind!=='load')continue;const f=exIn(p,x.exId);if(!f)continue;const e=f.e;if(e.kind!=='load'||!planEmpty(e))continue;const top=topKg(x);if(!top)continue;
+    const g=genPlan(top,e.inc,p),off=top-(g[L.week-1]??top);e.plan=g.map(v=>v==null?null:Math.max(0,r2(v+off)));e.base=e.plan[0];recalcDeload(e,p);out.push(e.name)}
+  return out}
 function shiftFuture(e,p,from,delta){const N=weeksOf(p);for(let w=Math.max(1,from);w<=N;w++){if(phaseAt(p,w).mode==='deload')continue;const v=e.plan[w-1];if(v!=null)e.plan[w-1]=Math.max(0,r2(v+delta))}recalcDeload(e,p)}
 
 /* ---------- planos ---------- */
@@ -695,7 +701,7 @@ function itemTarget(e,p,w){const k=e.kind;
 VIEWS.hoje=function(){
   if(S.active)return viewWorkout();
   const p=myActive();
-  let h=hdr('Hoje',(ME&&ME.name?'Olá, '+esc(ME.name.split(' ')[0])+' · ':'')+esc(new Date().toLocaleDateString('pt-BR',{weekday:'long',day:'numeric',month:'long'})),false,syncBadge());
+  let h=hdr('Hoje',(ME&&ME.name?'Olá, '+esc(ME.name.split(' ')[0])+' · ':'')+esc(new Date().toLocaleDateString('pt-BR',{weekday:'long',day:'numeric',month:'long'})),false,`<div class="row" style="gap:6px">${syncBadge()}<button class="ib" data-act="go" data-v="ajuda" aria-label="Ajuda">?</button></div>`);
   if(!p||!p.sessions.length)return h+`<div class="card hero"><h2>${p?'Seu plano ainda não tem treinos':'Nenhum plano ativo'}</h2><p class="mu sm">Crie um plano (ou adicione treinos a ele) na aba <b>Planos</b>.${ME.role!=='master'?' O master também pode montar para você — aparece aqui automaticamente.':''}</p><button class="btn pri block" data-act="tab" data-t="planos">Ir para Planos</button><div style="height:8px"></div><button class="btn block" data-act="syncNow">Atualizar</button></div>`;
   const pr=progOf(p),w=pr.week,N=weeksOf(p);
   if(w>N)return h+`<div class="card hero"><h2>${esc(p.name)} concluído 🎉</h2><p class="mu sm">Você completou as ${N} semanas. O que vem agora?</p><button class="btn pri block" data-act="repeatPlan">Repetir com cargas atualizadas</button><div style="height:8px"></div><button class="btn block" data-act="tab" data-t="planos">Escolher outro plano</button></div>`;
@@ -723,7 +729,7 @@ function viewWorkout(){
     const sub=k==='cardio'?itemTarget(e,p,w).filter(Boolean).join(' · '):k==='wod'?itemTarget(e,p,w)[0]:`${ax.sets.length} × ${esc(e.reps)}${k==='time'?'s':''}${e.rir?' · '+esc(e.rir):''}${e.rest?' · '+esc(e.rest):''}`;
     h+=`<div class="card ex ${all?'exdone':''} ${(k==='cardio'||k==='wod')&&ax.done?'xdone':''}" id="ex${i}"><div class="exh" data-act="toggleWhy" data-i="${i}"><div style="min-width:0"><b>${i+1}. ${esc(ax.name)}</b><div class="mu sm">${sub}</div></div>${right}</div>
       ${lp?`<div class="last">Última (${dshort(lp.log.date)}): ${esc(exSummary(lp.ex))}</div>`:''}
-      ${ax.open&&e.why?`<div class="why">${esc(e.why)}</div>`:''}`;
+      ${ax.open&&e.why?`<div class="why">${esc(e.why)}</div>`:''}${k==='load'&&p&&f&&planEmpty(e)?`<div class="mu xs" style="margin:4px 0 2px">Sem carga no plano: a carga que você usar hoje vira a base do plano ao finalizar.</div>`:''}`;
     if(k==='load'||k==='bw'){const[lo,hi]=range(e.reps);
       h+=`<div class="sg hd2"><span>#</span><span>${k==='bw'?'lastro':'kg'}</span><span>reps</span><span>RIR</span><span></span></div>
       ${ax.sets.map((s,j)=>`<div class="sg ${s.done?'done':''}"><span>${j+1}</span><input data-wf="kg" data-i="${i}" data-j="${j}" inputmode="decimal" value="${s.kg??''}" placeholder="${k==='bw'?'0':'kg'}"><input data-wf="reps" data-i="${i}" data-j="${j}" inputmode="numeric" value="${s.reps??''}" placeholder="${lo===hi?lo:lo+'–'+hi}"><input data-wf="rir" data-i="${i}" data-j="${j}" inputmode="numeric" value="${s.rir??''}" placeholder="${esc(String(e.rir||'').replace(/RIR\s*/,''))}"><button class="chk" data-act="setDone" data-i="${i}" data-j="${j}" aria-label="Concluir série">✓</button></div>`).join('')}`}
@@ -791,11 +797,13 @@ function finishWorkout(){const A=S.active;
   const L={id:A.id,planId:A.planId,planName:A.planName,round:A.round||1,sessionId:A.sessionId,name:A.name,date:A.date,week:A.week,startedAt:A.startedAt,finishedAt:Date.now(),durationSec:Math.round(elapsedMs(A)/1000),note:A.note||'',exercises:ex};
   S.logs.push(L);markLog(L.id);sortLogs();S.active=null;T=null;let msg='Treino salvo 💪';
   const p=planById(L.planId,S.lib);
+  const filled=fillPlanFromLog(p,L);
   if(p&&p.id===S.lib.activeId){const pr=progOf(p),N=weeksOf(p);
     if(pr.week<=N&&p.sessions.every(s=>doneThisWeek(p).has(s.id))){pr.week++;
       if(pr.week>N){if(p.repeat){pr.week=1;pr.round=(pr.round||1)+1;msg=`Bloco concluído! 🎉 ${p.name} recomeça na semana 1`}else msg=`Semana ${N} concluída — plano completo! 🎉`}
       else msg=`Semana ${pr.week-1} concluída! 🎉 Agora: semana ${pr.week} · ${phaseAt(p,pr.week).name}`}}
   const kc=workoutKcal(L);if(kc&&kc.total)msg+=' · '+kcalTxt(kc);
+  if(filled.length)msg+=` · Carga do plano definida para ${filled.length} exercício${filled.length>1?'s':''}`;
   commit();wake();V.stack=[];render();scrollTo(0,0);toast(msg)}
 
 /* ---------- PLANOS ---------- */
@@ -986,6 +994,129 @@ function bodySummary(B,editable){const w=weightsSorted(B),last=w[w.length-1],a=a
   return`<div class="stat"><div><b>${last?fnum(last.kg,1):'—'}</b><span>peso (kg)${last?' · '+dshort(last.date):''}</span></div><div><b>${diff!=null?(diff>0?'+':'')+fnum(diff,1):'—'}</b><span>variação desde ${first?dshort(first.date):'—'}</span></div><div><b>${r?Math.round(r).toLocaleString('pt-BR'):'—'}</b><span>metabolismo basal (kcal/dia)</span></div></div>
     ${a!=null||B.height?`<div class="mu sm" style="margin-top:6px">${B.sex==='F'?'Feminino':B.sex==='M'?'Masculino':''}${a!=null?' · '+a+' anos':''}${B.height?' · '+B.height+' cm':''}</div>`:''}`}
 
+/* ---------- ANAMNESE E AVALIAÇÃO FÍSICA ----------
+   Guardada no documento de planos (lib.anam) para que o usuário e o master possam editar.
+   IMC (OMS) · RCQ (OMS) · Relação cintura/estatura · %G por dobras (Jackson & Pollock 3/7 + Siri)
+   ou fita métrica (Marinha dos EUA) · FC máx (Tanaka) · zonas por FC de reserva (Karvonen). */
+const PARQ=['Algum médico já disse que você tem problema no coração ou pressão alta?',
+ 'Você sente dor no peito em repouso, nas atividades do dia a dia ou durante atividade física?',
+ 'Você perde o equilíbrio por tontura ou perdeu a consciência nos últimos 12 meses?',
+ 'Você já foi diagnosticado com outra doença crônica (além de coração ou pressão alta)?',
+ 'Você toma atualmente remédios receitados para alguma doença crônica?',
+ 'Você tem (ou teve nos últimos 12 meses) problema em ossos, articulações ou tecidos moles que possa piorar com atividade física?',
+ 'Algum médico já disse que você só deve fazer atividade física com supervisão médica?'];
+const CIRC=[['neck','Pescoço'],['chest','Peitoral'],['waist','Cintura'],['abdomen','Abdômen (umbigo)'],['hip','Quadril'],['arm','Braço contraído'],['forearm','Antebraço'],['thigh','Coxa'],['calf','Panturrilha']];
+const FOLDS=[['chest','Peitoral'],['midax','Axilar média'],['triceps','Tríceps'],['subscap','Subescapular'],['abd','Abdominal'],['suprail','Suprailíaca'],['thigh','Coxa']];
+const JP3={M:['chest','abd','thigh'],F:['triceps','suprail','thigh']};
+const ANM={};let ANM_TAB='res';
+function anamOf(lib){lib=lib||S.lib;if(!lib.anam)lib.anam={health:{parq:[],obj:'',cond:'',inj:'',meds:'',surg:'',smoke:'',act:'',notes:''},evals:[],sex:'',birth:''};lib.anam.evals=lib.anam.evals||[];lib.anam.health=lib.anam.health||{parq:[]};return lib.anam}
+/* contexto: próprio usuário ou usuário gerenciado pelo master */
+function anamCtx(uid){if(!uid||uid===ME.id)return{self:true,lib:S.lib,body:bodyOf(),name:ME.name};const m=ANM[uid];return m&&m.lib?{self:false,uid,lib:m.lib,body:m.body||{},name:m.name}:null}
+function anamBasics(c,a){const B=c.body||{};return{sex:B.sex||a.sex||'',birth:B.birth||a.birth||'',height:+B.height||null}}
+function anamSave(c){if(c.self){commit();return}const m=ANM[c.uid];m.dirty=true;saveAnamRemote(c.uid)}
+async function saveAnamRemote(uid){const m=ANM[uid];if(!m||!m.dirty)return;if(!navigator.onLine){toast('Sem internet — anamnese de '+m.name+' NÃO foi salva');return}
+  const{data,error}=await SB.from('user_docs').select('program').eq('user_id',uid).maybeSingle();if(error){toast(friendlyErr(error));return}
+  const lib=libFrom(data&&data.program)||emptyLib();lib.anam=m.lib.anam;
+  const{error:e2}=await SB.from('user_docs').update({program:lib,program_edited:Date.now()}).eq('user_id',uid);if(e2){toast('Erro ao salvar: '+friendlyErr(e2));return}
+  m.dirty=false;m.lib=lib;toast('Salvo para '+m.name)}
+async function openAnamFor(u){if(!navigator.onLine){toast('Precisa de internet');return}
+  const{data,error}=await SB.from('user_docs').select('program,state').eq('user_id',u.id).maybeSingle();if(error){toast(friendlyErr(error));return}
+  ANM[u.id]={name:u.name,lib:libFrom(data&&data.program)||emptyLib(),body:(data&&data.state&&data.state.body)||{},dirty:false};ANM_TAB='res';go('anam',{uid:u.id})}
+
+/* ---------- cálculos ---------- */
+function r1(v){return Math.round(v*10)/10}
+function imcOf(kg,cm){if(!kg||!cm)return null;const v=kg/Math.pow(cm/100,2);
+  const c=v<18.5?['Abaixo do peso','warn']:v<25?['Peso normal','ok']:v<30?['Sobrepeso','warn']:v<35?['Obesidade grau I','bad']:v<40?['Obesidade grau II','bad']:['Obesidade grau III','bad'];return{v:r1(v),txt:c[0],c:c[1]}}
+function rcqOf(w,h,sex){if(!w||!h||!sex)return null;const v=w/h,lim=sex==='F'?0.85:0.90;return{v:Math.round(v*100)/100,txt:v>=lim?'Risco aumentado':'Adequado',c:v>=lim?'bad':'ok',lim}}
+function rceOf(w,cm){if(!w||!cm)return null;const v=w/cm;return{v:Math.round(v*100)/100,txt:v>=0.6?'Risco alto':v>=0.5?'Risco aumentado':'Adequado',c:v>=0.6?'bad':v>=0.5?'warn':'ok'}}
+function bfFolds(E,sex,age){const f=E.folds||{},P=E.protocol||'jp3';if(!sex||age==null)return null;const keys=P==='jp7'?FOLDS.map(x=>x[0]):JP3[sex];
+  const vals=keys.map(k=>+f[k]);if(vals.some(v=>!v))return null;const s=vals.reduce((a,b)=>a+b,0);let D;
+  if(P==='jp7')D=sex==='M'?1.112-0.00043499*s+0.00000055*s*s-0.00028826*age:1.097-0.00046971*s+0.00000056*s*s-0.00012828*age;
+  else D=sex==='M'?1.10938-0.0008267*s+0.0000016*s*s-0.0002574*age:1.0994921-0.0009929*s+0.0000023*s*s-0.0001392*age;
+  return{v:r1(495/D-450),sum:r1(s),method:P==='jp7'?'Dobras · Jackson & Pollock 7':'Dobras · Jackson & Pollock 3'}}
+function bfTape(E,sex,cm){const c=E.circ||{},n=+c.neck,w=+(sex==='M'?(c.abdomen||c.waist):c.waist),hp=+c.hip;if(!sex||!cm||!n||!w)return null;let v;
+  if(sex==='M'){if(w<=n)return null;v=495/(1.0324-0.19077*Math.log10(w-n)+0.15456*Math.log10(cm))-450}
+  else{if(!hp||w+hp<=n)return null;v=495/(1.29579-0.35004*Math.log10(w+hp-n)+0.221*Math.log10(cm))-450}
+  return v>0&&v<70?{v:r1(v),method:'Fita métrica · Marinha dos EUA'}:null}
+function bfClass(v,sex){const t=sex==='F'?[[14,'Essencial','warn'],[21,'Atleta','ok'],[25,'Bom','ok'],[32,'Médio','warn'],[999,'Acima do ideal','bad']]:[[6,'Essencial','warn'],[14,'Atleta','ok'],[18,'Bom','ok'],[25,'Médio','warn'],[999,'Acima do ideal','bad']];for(const[l,n,c]of t)if(v<l)return{txt:n,c}}
+function evalCalc(E,k){const sex=k.sex,age=ageAt(k.birth,E.date),cm=+E.height||k.height,kg=+E.weight||null,c=E.circ||{};
+  const bf=bfFolds(E,sex,age)||bfTape(E,sex,cm);const out={age,cm,kg,imc:imcOf(kg,cm),rcq:rcqOf(+c.waist,+c.hip,sex),rce:rceOf(+c.waist,cm),bf};
+  if(bf&&kg){out.fat=r1(kg*bf.v/100);out.lean=r1(kg-out.fat);out.bfc=bfClass(bf.v,sex)}
+  if(age!=null){const fcm=Math.round(208-0.7*age),rhr=+E.rhr||null;out.fcmax=fcm;out.rhr=rhr;
+    out.zones=[[50,60,'Z1 · Recuperação'],[60,70,'Z2 · Base aeróbica'],[70,80,'Z3 · Aeróbico moderado'],[80,90,'Z4 · Limiar'],[90,100,'Z5 · Máximo']].map(([a,b,n])=>[n,rhr?Math.round(rhr+(fcm-rhr)*a/100):Math.round(fcm*a/100),rhr?Math.round(rhr+(fcm-rhr)*b/100):Math.round(fcm*b/100)])}
+  return out}
+function parqAlert(H){return(H.parq||[]).some(x=>x===true)}
+
+/* ---------- telas ---------- */
+const clr=c=>c==='ok'?'var(--ok)':c==='bad'?'var(--bad)':'var(--warn)';
+function kv(l,v,s,c){return`<div class="row" style="padding:7px 0;border-top:1px solid var(--s3)"><span class="sp">${l}</span><span style="text-align:right"><b>${v}</b>${s?`<div class="xs" style="color:${clr(c)}">${s}</div>`:''}</span></div>`}
+function dl(a,b,inv){if(a==null||b==null)return'';const d=r1(a-b);if(!d)return'<span class="mu xs"> =</span>';const good=inv?d<0:d>0;return` <span class="xs" style="color:${good?'var(--ok)':'var(--warn)'}">${d>0?'+':''}${String(d).replace('.',',')}</span>`}
+const fz=v=>v==null?'—':String(v).replace('.',',');
+VIEWS.anam=function({uid}){const c=anamCtx(uid);if(!c)return hdr('Anamnese','',true)+'<div class="empty">Carregando…</div>';const a=anamOf(c.lib),k=anamBasics(c,a);
+  let h=hdr('Anamnese',c.self?'Saúde, medidas e composição corporal':'de '+esc(c.name),true);
+  h+=`<div class="seg">${[['res','Resultados'],['aval','Nova avaliação'],['saude','Saúde']].map(([t,l])=>`<button class="${ANM_TAB===t?'on':''}" data-act="anTab" data-t="${t}" data-uid="${uid||''}">${l}</button>`).join('')}</div>`;
+  if(parqAlert(a.health))h+=`<div class="sug down" style="margin:10px 0 0">⚠️ Há resposta <b>"Sim"</b> no questionário de saúde. Recomenda-se avaliação médica antes de aumentar a intensidade dos treinos.</div>`;
+  const hasH=k.height||a.evals.some(x=>x.height);const miss=[!k.sex&&'sexo',!k.birth&&'data de nascimento',!hasH&&'altura'].filter(Boolean);
+  if(ANM_TAB==='saude')return h+anamHealthForm(a,k,uid);
+  if(ANM_TAB==='aval')return h+anamEvalForm(a,k,uid,c);
+  const ev=a.evals.slice().sort((x,y)=>x.date<y.date?1:-1);
+  if(miss.length)h+=`<div class="card sm mu">Para todos os cálculos falta: <b>${miss.join(', ')}</b>. Preencha na aba <b>Saúde</b>${!hasH?' (a altura vai na avaliação)':''}.</div>`;
+  if(!ev.length)return h+`<div class="empty">Nenhuma avaliação ainda.<div style="height:10px"></div><button class="btn pri" data-act="anTab" data-t="aval" data-uid="${uid||''}">+ Nova avaliação</button></div>`;
+  const E=ev[0],R=evalCalc(E,k),P=ev[1]?evalCalc(ev[1],k):null;
+  h+=`<h3>Avaliação de ${isoToBR(E.date)}${P?` <span class="mu xs" style="text-transform:none;letter-spacing:0">vs ${isoToBR(ev[1].date)}</span>`:''}</h3><div class="card" style="padding:6px 14px">`;
+  h+=kv('Peso',R.kg?fz(R.kg)+' kg'+(P?dl(R.kg,P.kg,true):''):'—');
+  if(R.imc)h+=kv('IMC',fz(R.imc.v)+(P&&P.imc?dl(R.imc.v,P.imc.v,true):''),R.imc.txt,R.imc.c);
+  if(R.bf)h+=kv('% de gordura',fz(R.bf.v)+' %'+(P&&P.bf?dl(R.bf.v,P.bf.v,true):''),(R.bfc?R.bfc.txt+' · ':'')+R.bf.method,R.bfc?R.bfc.c:'');
+  if(R.fat!=null)h+=kv('Massa gorda',fz(R.fat)+' kg'+(P&&P.fat!=null?dl(R.fat,P.fat,true):''))+kv('Massa magra',fz(R.lean)+' kg'+(P&&P.lean!=null?dl(R.lean,P.lean):''));
+  if(R.rcq)h+=kv('Relação cintura/quadril',fz(R.rcq.v),R.rcq.txt+` (limite ${fz(R.rcq.lim)})`,R.rcq.c);
+  if(R.rce)h+=kv('Relação cintura/altura',fz(R.rce.v),R.rce.txt,R.rce.c);
+  if(!R.bf)h+=`<div class="mu xs" style="padding:8px 0">% de gordura: informe as dobras (adipômetro) ou pescoço + ${k.sex==='F'?'cintura + quadril':'abdômen'} (fita).</div>`;
+  h+=`</div>`;
+  const cm=CIRC.filter(([x])=>E.circ&&E.circ[x]);
+  if(cm.length)h+=`<h3>Circunferências (cm)</h3><div class="card" style="padding:6px 14px">${cm.map(([x,l])=>kv(l,fz(E.circ[x])+(ev[1]&&ev[1].circ&&ev[1].circ[x]?dl(+E.circ[x],+ev[1].circ[x],x==='waist'||x==='abdomen'||x==='hip'):''))).join('')}</div>`;
+  if(R.zones)h+=`<h3>Frequência cardíaca</h3><div class="card" style="padding:6px 14px">${kv('FC máxima estimada',R.fcmax+' bpm','Fórmula de Tanaka (208 − 0,7 × idade)','ok')}${kv('FC de repouso',R.rhr?R.rhr+' bpm':'—',R.rhr?'Zonas pela FC de reserva (Karvonen)':'Informe a FC de repouso para zonas mais precisas','ok')}
+    ${R.zones.map(([n,a,b])=>kv(n,`${a}–${b} bpm`)).join('')}<div class="mu xs" style="padding:8px 0">Use no campo "Zona / FC média" do cardio. Z2 é a zona de base aeróbica.</div></div>`;
+  h+=`<h3>Histórico de avaliações</h3><div class="card" style="padding:4px 14px">${ev.map(x=>{const r=evalCalc(x,k);return`<div class="row" style="padding:8px 0;border-top:1px solid var(--s3)"><span class="sp"><b>${isoToBR(x.date)}</b><div class="mu xs">${[r.kg&&fz(r.kg)+' kg',r.imc&&'IMC '+fz(r.imc.v),r.bf&&fz(r.bf.v)+'% G'].filter(Boolean).join(' · ')||'—'}${x.by==='master'?' · pelo administrador':''}</div></span><button class="btn ghost smb" data-act="anEdit" data-id="${x.id}" data-uid="${uid||''}">editar</button></div>`}).join('')}</div>
+    <p class="mu xs">Valores estimados por fórmulas de campo; servem para acompanhar a evolução e não substituem avaliação profissional.</p>`;
+  return h};
+function inp(id,l,v,ph,mode){return`<label class="f"><span>${l}</span><input id="${id}" inputmode="${mode||'decimal'}" value="${v??''}" placeholder="${ph||''}"></label>`}
+function anamHealthForm(a,k,uid){const H=a.health;
+  let h=`<h3>Dados básicos</h3><div class="card"><div class="grid2"><label class="f" style="margin-top:0"><span>Sexo</span>${sel('',[['','—'],['M','Masculino'],['F','Feminino']],k.sex,'id="anSex"')}</label><label class="f" style="margin-top:0"><span>Nascimento</span><input id="anBirth" data-mask="date" inputmode="numeric" placeholder="DD/MM/AAAA" value="${isoToBR(k.birth)}"></label></div><div class="mu xs" style="margin-top:6px">Usados nos cálculos. Se já estiverem no Perfil corporal (Ajustes), prevalecem os de lá.</div></div>`;
+  h+=`<h3>Prontidão para atividade física (PAR-Q)</h3><div class="card" style="padding:4px 14px">${PARQ.map((q,i)=>`<div style="padding:9px 0;border-top:${i?'1px solid var(--s3)':'0'}"><div class="sm">${i+1}. ${q}</div><div class="row" style="gap:8px;margin-top:6px">${[['1','Sim'],['0','Não']].map(([v,l])=>`<label class="chip" style="display:inline-flex;gap:6px;align-items:center"><input type="radio" name="pq${i}" value="${v}" ${H.parq[i]===(v==='1')?'checked':''}> ${l}</label>`).join('')}</div></div>`).join('')}</div>`;
+  h+=`<h3>Histórico</h3><div class="card">${[['anObj','Objetivo','obj','ex: hipertrofia, emagrecimento, condicionamento'],['anAct','Atividade física atual','act','ex: musculação 5×/sem há 2 anos'],['anCond','Doenças / condições de saúde','cond','ex: nenhuma'],['anInj','Lesões, dores ou limitações','inj','ex: dor no ombro direito em supino'],['anSurg','Cirurgias','surg',''],['anMeds','Medicamentos em uso','meds',''],['anSmoke','Tabagismo / álcool','smoke',''],['anNotes','Observações','notes','sono, alimentação, estresse…']].map(([id,l,f,ph])=>`<label class="f"><span>${l}</span><textarea id="${id}" rows="2" placeholder="${ph}">${esc(H[f]||'')}</textarea></label>`).join('')}
+    <button class="btn pri block" data-act="anSaveHealth" data-uid="${uid||''}" style="margin-top:10px">Salvar</button></div>`;
+  return h}
+function anamEvalForm(a,k,uid,c){const E=ANM_EDIT?a.evals.find(x=>x.id===ANM_EDIT):null;const last=a.evals.slice().sort((x,y)=>x.date<y.date?1:-1)[0];
+  const e=E||{date:iso(new Date()),weight:c.self?weightAt(bodyOf()):(weightsSorted(c.body||{}).slice(-1)[0]||{}).kg,height:k.height,circ:{},folds:{},protocol:(last&&last.protocol)||'jp3',rhr:last&&last.rhr};
+  let h=`<h3>${E?'Editar avaliação':'Nova avaliação'}</h3><div class="card"><div class="grid2"><label class="f" style="margin-top:0"><span>Data</span><input id="evDate" data-mask="date" inputmode="numeric" value="${isoToBR(e.date)}"></label>${inp('evRhr','FC de repouso (bpm)',e.rhr,'ex: 62','numeric').replace('class="f"','class="f" style="margin-top:0"')}</div>
+    <div class="grid2">${inp('evW','Peso (kg)',e.weight,'ex: 82,5')}${inp('evH','Altura (cm)',e.height,'ex: 175','numeric')}</div></div>`;
+  h+=`<h3>Circunferências (cm)</h3><div class="card"><div class="grid2">${CIRC.map(([x,l])=>inp('ec_'+x,l,e.circ[x],'')).join('')}</div><div class="mu xs" style="margin-top:6px">Para o % de gordura pela fita: pescoço + ${k.sex==='F'?'cintura + quadril':'abdômen'}. Cintura + quadril também calculam a relação cintura/quadril.</div></div>`;
+  h+=`<h3>Dobras cutâneas (mm) — opcional</h3><div class="card"><label class="f" style="margin-top:0"><span>Protocolo</span>${sel('',[['jp3','Jackson & Pollock 3 dobras'],['jp7','Jackson & Pollock 7 dobras']],e.protocol,'id="evProt"')}</label>
+    <div class="grid2">${FOLDS.map(([x,l])=>inp('ef_'+x,l+((JP3[k.sex||'M']||[]).includes(x)?' •':''),e.folds[x],'')).join('')}</div><div class="mu xs" style="margin-top:6px">• = as 3 dobras do protocolo de 3${k.sex?'':' (masculino; marque o sexo na aba Saúde)'}. O de 7 usa todas. Com as dobras preenchidas, elas têm prioridade sobre a fita.</div></div>
+    <button class="btn pri block" data-act="anSaveEval" data-uid="${uid||''}">${E?'Salvar alterações':'Salvar avaliação'}</button>${E?`<div style="height:8px"></div><button class="btn block" data-act="anDelEval" data-id="${E.id}" data-uid="${uid||''}" style="color:var(--bad)">Excluir avaliação</button>`:''}`;
+  return h}
+let ANM_EDIT=null;
+Object.assign(ACT,{
+  anOpen:d=>{ANM_TAB='res';ANM_EDIT=null;go('anam',{})},
+  anOpenUser:d=>{const u=USERS.list.find(x=>x.id===d.id);ANM_EDIT=null;openAnamFor(u)},
+  anTab:d=>{ANM_TAB=d.t;ANM_EDIT=null;render();scrollTo(0,0)},
+  anEdit:d=>{ANM_TAB='aval';ANM_EDIT=d.id;render();scrollTo(0,0)},
+  anSaveHealth:d=>{const c=anamCtx(d.uid);const a=anamOf(c.lib),H=a.health;
+    const b=$('#anBirth').value.trim(),bi=b?brToISO(b):'';if(b&&!bi){toast('Data de nascimento inválida (DD/MM/AAAA)');return}
+    a.sex=$('#anSex').value;a.birth=bi||'';H.parq=PARQ.map((_,i)=>{const r=document.querySelector(`input[name="pq${i}"]:checked`);return r?r.value==='1':null});
+    [['anObj','obj'],['anAct','act'],['anCond','cond'],['anInj','inj'],['anSurg','surg'],['anMeds','meds'],['anSmoke','smoke'],['anNotes','notes']].forEach(([id,f])=>H[f]=$('#'+id).value.trim());
+    H.updated=Date.now();H.by=c.self?'self':'master';anamSave(c);if(c.self)toast('Anamnese salva');ANM_TAB='res';render();scrollTo(0,0)},
+  anSaveEval:d=>{const c=anamCtx(d.uid);const a=anamOf(c.lib);const dt=brToISO($('#evDate').value);if(!dt){toast('Data inválida (DD/MM/AAAA)');return}
+    const g=id=>{const v=num($('#'+id).value);return v&&v>0?v:null};
+    const E=(ANM_EDIT&&a.evals.find(x=>x.id===ANM_EDIT))||{id:uid36('av')};
+    Object.assign(E,{date:dt,weight:g('evW'),height:g('evH'),rhr:g('evRhr'),protocol:$('#evProt').value,circ:{},folds:{},by:c.self?'self':'master',at:Date.now()});
+    CIRC.forEach(([x])=>{const v=g('ec_'+x);if(v)E.circ[x]=v});FOLDS.forEach(([x])=>{const v=g('ef_'+x);if(v)E.folds[x]=v});
+    if(!a.evals.includes(E))a.evals.push(E);
+    if(c.self){const B=bodyOf();if(E.weight&&!(B.weights||[]).some(w=>w.date===dt)){B.weights=B.weights||[];B.weights.push({date:dt,kg:E.weight})}if(E.height&&!B.height)B.height=E.height}
+    anamSave(c);if(c.self)toast('Avaliação salva');ANM_EDIT=null;ANM_TAB='res';render();scrollTo(0,0)},
+  anDelEval:d=>{const c=anamCtx(d.uid);const a=anamOf(c.lib);confirmBox('Excluir avaliação','<p>Esta avaliação será apagada.</p>','Excluir',()=>{a.evals=a.evals.filter(x=>x.id!==d.id);anamSave(c);ANM_EDIT=null;ANM_TAB='res';render()},true)}
+});
+
 /* ---------- EVOLUÇÃO ---------- */
 function exOptions(p,selId){return p.sessions.map(s=>`<optgroup label="${esc(s.name)}">${s.exercises.map(e=>`<option value="${e.id}" ${e.id===selId?'selected':''}>${KIND_ICON[e.kind]||''} ${esc(e.name)}</option>`).join('')}</optgroup>`).join('')}
 function chart(e,p){const N=weeksOf(p),W=340,H=190,pl=36,pr=10,pt=12,pb=26;const plan=Array.from({length:N},(_,i)=>planFor(e,i+1));
@@ -1052,6 +1183,7 @@ VIEWS.log=function({id}){const L=S.logs.find(l=>l.id===id);if(!L)return hdr('Reg
 /* ---------- AJUSTES ---------- */
 VIEWS.ajustes=function(){const st=S.settings,p=myActive();
   let h=hdr('Ajustes','Versão '+APP_VERSION,false,syncBadge());
+  h+=`<div class="grid2" style="margin-bottom:6px"><button class="btn" data-act="anOpen">🩺 Anamnese</button><button class="btn" data-act="go" data-v="ajuda">❓ Ajuda</button></div>`;
   if(p){const w=progOf(p).week,N=weeksOf(p);h+=`<h3>Plano ativo</h3><div class="card"><div class="b">${esc(p.name)}</div><p class="sm mu">A semana avança sozinha quando você completa todos os treinos. Use os botões só para corrigir.</p>
     <div class="row"><button class="btn smb" data-act="shiftWeek" data-d="-1">◀ Voltar</button><div class="sp" style="text-align:center"><b>Semana ${Math.min(w,N+1)}</b><div class="mu xs">${w<=N?esc(phaseAt(p,w).name):'concluído'}</div></div><button class="btn smb" data-act="shiftWeek" data-d="1">Avançar ▶</button></div></div>`}
   {const B=bodyOf(),r=bmrOf(B);h+=`<h3>Perfil corporal</h3><div class="card"><div class="grid2"><label class="f" style="margin-top:0"><span>Sexo</span>${sel('',[['','—'],['M','Masculino'],['F','Feminino']],B.sex,'id="bfSex"')}</label><label class="f" style="margin-top:0"><span>Nascimento (DD/MM/AAAA)</span><input id="bfBirth" data-mask="date" inputmode="numeric" maxlength="10" placeholder="dd/mm/aaaa" value="${esc(isoToBR(B.birth))}" autocomplete="bday"></label></div>
@@ -1077,6 +1209,64 @@ function onImport(inp){const file=inp.files[0];inp.value='';if(!file)return;cons
 VIEWS.weights=function(){const B=bodyOf(),w=weightsSorted(B).reverse();let h=hdr('Peso corporal',w.length+' registro(s)',true);
   h+=`<div class="card">${weightChart(B)}</div><div class="card" style="padding:4px 14px">${w.map((x,i)=>{const prev=w[i+1];const d=prev?r2(x.kg-prev.kg):null;return`<div class="li"><span class="pill" style="min-width:52px;text-align:center">${dshort(x.date)}</span><div class="t"><b>${fnum(x.kg,1)} kg</b><span class="mu sm">${d!=null?(d>0?'+':'')+fnum(d,1)+' kg':'primeiro registro'}</span></div><button class="ib" data-act="delWeight" data-date="${x.date}" style="color:var(--bad)">✕</button></div>`}).join('')}</div>
   <button class="btn pri block" data-act="addWeight">+ Registrar peso</button>`;return h};
+
+/* ---------- AJUDA ---------- */
+function helpRow(icon,title,desc){return`<div class="hl"><div class="hi">${icon}</div><div><b>${title}</b><div class="sm mu">${desc}</div></div></div>`}
+function helpDot(c,t){return`<span style="display:inline-flex;align-items:center;gap:6px;background:var(--s2);color:var(--mu);font-size:12px;border-radius:999px;padding:6px 10px"><i style="width:8px;height:8px;border-radius:50%;display:inline-block;background:${c}"></i>${t}</span>`}
+VIEWS.ajuda=function(){
+  const sec=(t,body,open)=>`<details ${open?'open':''}><summary>${t}</summary><div style="margin-top:8px">${body}</div></details>`;
+  let h=hdr('Ajuda','Legendas, termos e o que cada botão faz',true);
+  h+=sec('📖 Termos do treino',
+    helpRow('<b>RIR</b>','RIR (Repetições em Reserva)','Quantas repetições você ainda conseguiria fazer ao terminar a série. RIR 2 = parou com 2 de sobra. RIR 0 = falha. O <b>RIR alvo</b> da semana vem da fase da periodização.')+
+    helpRow('<b>4×8–12</b>','Séries × repetições','4 séries de 8 a 12 repetições. Ao atingir o topo da faixa (12) em todas as séries, é hora de subir a carga.')+
+    helpRow('<b>90 s</b>','Descanso','Tempo de descanso entre as séries. O cronômetro dispara sozinho ao concluir cada série.')+
+    helpRow('<b>Sem 1/4</b>','Semana do plano','Semana atual e total de semanas do plano. Avança sozinha quando todos os treinos da semana são concluídos.')+
+    helpRow('🔥','Gasto calórico estimado','Estimativa baseada no seu metabolismo (Ajustes → Perfil corporal) e no tempo de treino. É uma média, para comparar com o relógio.')+
+    helpRow('1RM','1RM estimado','Carga máxima estimada para 1 repetição, calculada a partir das séries registradas (aparece em Evolução).'),true);
+  h+=sec('🏷️ Tipos de exercício',
+    helpRow(KIND_ICON.load,'Carga × reps','Exercício com peso. Registre kg, repetições e RIR de cada série.')+
+    helpRow(KIND_ICON.bw,'Peso corporal','Barra fixa, mergulho etc. O campo kg é o <b>lastro</b> (peso extra). Deixe em branco se usar só o corpo; "PC" = peso corporal.')+
+    helpRow(KIND_ICON.time,'Tempo','Prancha e similares. Registre os segundos de cada série (kg é opcional).')+
+    helpRow(KIND_ICON.cardio,'Cardio','Registre minutos, distância, zona/FC média e calorias. O ritmo (min/km) é calculado sozinho. Com FC média, o gasto calórico fica mais preciso.')+
+    helpRow(KIND_ICON.wod,'WOD (Crossfit)','AMRAP (rounds + reps), For Time (tempo), EMOM (rounds) ou carga máxima. "Rx" = como prescrito; "Adaptado" = versão ajustada.'));
+  h+=sec('🎨 Cores e indicadores',
+    `<div class="sm mu" style="margin-bottom:6px"><b style="color:var(--tx)">Status da nuvem</b> (canto superior direito — toque para sincronizar):</div>
+     <div class="row" style="flex-wrap:wrap;gap:6px;margin-bottom:10px">${helpDot('var(--ok)','na nuvem')}${helpDot('var(--warn)','pendente')}${helpDot('var(--acu)','sincronizando')}${helpDot('var(--mu)','offline')}${helpDot('var(--bad)','erro')}</div>
+     <div class="sm mu" style="margin-bottom:10px"><b style="color:var(--ok)">na nuvem</b>: tudo salvo. <b style="color:var(--warn)">pendente</b>: há alterações só neste aparelho, que sobem quando houver internet. <b>offline</b>: sem internet — o app funciona normalmente e sincroniza depois. <b style="color:var(--bad)">erro</b>: toque para tentar de novo.</div>`+
+    helpRow('<span class="pill">Fase</span>','Etiqueta da fase','Nome da fase atual da periodização (ex.: Acumulação, Manutenção, Deload), na cor da fase.')+
+    helpRow('▬▬▬','Barra de semanas','Cada traço é uma semana do plano, na cor da sua fase. O traço com contorno é a semana atual.')+
+    helpRow('<span style="color:var(--ok)">✓</span>','Treino feito','Nos quadrinhos da semana: verde com ✓ = feito; contorno laranja = <b>próximo</b> treino.')+
+    helpRow('<div class="kg" style="padding:2px 6px">Plano<b> 60 kg</b></div>','Carga do plano','Carga prevista para esta semana. "—" = ainda sem carga: a que você usar no treino vira a base do plano ao finalizar.')+
+    helpRow('<span style="color:var(--ok)">▍</span>','Sugestão verde','Você atingiu o topo da faixa: pode subir a carga. Pode trazer um botão para ajustar o plano.')+
+    helpRow('<span style="color:var(--warn)">▍</span>','Sugestão amarela','Abaixo da faixa em alguma série: mantenha a carga até completar as repetições.')+
+    helpRow('<span style="color:var(--acu)">▍</span>','Sugestão azul','Dentro da faixa: siga o plano e busque mais repetições.')+
+    helpRow('<span class="mu">Última</span>','Último desempenho','O que você fez neste exercício no treino anterior, para servir de referência.'));
+  h+=sec('▶️ Botões do treino',
+    helpRow('<span class="btn pri smb" style="pointer-events:none">Iniciar</span>','Iniciar treino','Abre o treino com as séries prontas. Você também pode tocar em qualquer quadrinho da semana para fazer outro treino.')+
+    helpRow('<span class="chk" style="display:inline-grid;place-items:center;width:34px;height:30px;pointer-events:none">✓</span>','Concluir série','Marca a série como feita e inicia o descanso. A carga digitada é copiada para as séries seguintes.')+
+    helpRow('<b>+ Série / − Série</b>','Adicionar ou remover série','Muda a quantidade de séries só neste treino.')+
+    helpRow('<b>dicas</b>','Dicas do exercício','Mostra a explicação do exercício (também abre ao tocar no nome).')+
+    helpRow('⏸','Pausar','Pausa e retoma o cronômetro do treino.')+
+    helpRow('<span class="btn pri smb" style="pointer-events:none">Finalizar</span>','Finalizar treino','Salva o treino no histórico, atualiza a semana e preenche cargas vazias do plano.')+
+    helpRow('<span style="color:var(--bad)">Descartar</span>','Descartar treino','Apaga o treino em andamento sem salvar.')+
+    helpRow('<b>Encerrar semana ›</b>','Encerrar semana','Avança para a próxima semana mesmo sem fazer todos os treinos.')+
+    helpRow('💾','Salvamento automático','Tudo o que você digita é salvo na hora. Se fechar o app no meio, o treino continua de onde parou.'));
+  h+=sec('📅 Planos',
+    helpRow('<b>+ Novo plano</b>','Novo plano','Escolha nome, periodização e os treinos: em branco, um modelo pronto ou cópia de outro plano.')+
+    helpRow('<b>Tornar ativo</b>','Tornar ativo','Define qual plano aparece em Hoje. Só um plano fica ativo por vez.')+
+    helpRow('<b>Editar periodização</b>','Periodização','Fases, semanas, RIR alvo e como a carga evolui: <b>subir carga</b> (kg por semana), <b>subir %</b>, <b>manter</b> ou <b>deload</b> (% do pico, para recuperar).')+
+    helpRow('<b>Gerar progressão</b>','Gerar progressão','Recalcula as cargas de todas as semanas a partir da carga base, seguindo a periodização. "Regerar de todos" faz isso em todos os exercícios.')+
+    helpRow('<b>Novo ciclo</b>','Novo ciclo','Recomeça o plano usando as cargas que você realmente alcançou.')+
+    helpRow('<b>↑ ↓</b>','Reordenar','Muda a ordem de treinos, exercícios e fases.')+
+    helpRow('<b>Duplicar / Excluir</b>','Duplicar ou excluir','Copia ou apaga o plano, o treino ou o exercício.')+
+    helpRow('<b>Banco</b>','Banco de exercícios','Cerca de 300 exercícios (musculação, aeróbico, core e crossfit), com busca e filtro por grupo.'));
+  h+=sec('📈 Evolução, Histórico e Ajustes',
+    helpRow('📈','Evolução','Resumo da semana, peso corporal e o histórico de cargas e 1RM estimado de cada exercício.')+
+    helpRow('🕒','Histórico','Todos os treinos feitos, por mês. Toque em um para ver os detalhes ou excluir.')+
+    helpRow('🩺','Anamnese','Em Ajustes. <b>Saúde</b>: questionário PAR-Q e histórico (um "Sim" gera alerta para consultar um médico). <b>Nova avaliação</b>: peso, circunferências, dobras e FC de repouso. <b>Resultados</b>: IMC, % de gordura (dobras ou fita), massas gorda e magra, cintura/quadril, cintura/altura, FC máxima e zonas de treino, comparando com a avaliação anterior. O administrador também pode preencher.')+
+    helpRow('⚙️','Ajustes','Corrigir a semana do plano, perfil corporal (para as calorias), sons e alertas, conta, sincronização e backup.')+
+    helpRow('⬇️','Backup','"Exportar" gera uma cópia extra dos seus dados; "Importar" restaura essa cópia.'));
+  return h};
 
 /* ================= NUVEM: login, sincronização e painel master ================= */
 function hsh(str){let h=5381;for(let i=0;i<str.length;i++)h=((h<<5)+h+str.charCodeAt(i))|0;return h.toString(36)+':'+str.length}
@@ -1185,7 +1375,8 @@ function logoutNow(){const id=ME&&ME.id;if(SB)SB.auth.signOut({scope:'local'}).c
 
 /* ---------- edição dos planos de outro usuário (master) ---------- */
 async function saveManaged(){const M=MANAGE;if(!M||!M.dirty)return;if(!navigator.onLine){toast('Sem internet — alterações de '+M.name+' NÃO foram salvas');return}
-  M.saving=true;const{error}=await SB.from('user_docs').update({program:M.lib,program_edited:Date.now()}).eq('user_id',M.uid);M.saving=false;
+  M.saving=true;{const r=await SB.from('user_docs').select('program').eq('user_id',M.uid).maybeSingle();const rl=libFrom(r.data&&r.data.program);if(rl&&rl.anam)M.lib.anam=rl.anam}
+const{error}=await SB.from('user_docs').update({program:M.lib,program_edited:Date.now()}).eq('user_id',M.uid);M.saving=false;
   if(error)toast('Erro ao salvar: '+friendlyErr(error));else{M.dirty=false;toast('Salvo para '+M.name)}}
 async function openManage(u){if(!navigator.onLine){toast('Precisa de internet');return}
   const{data,error}=await SB.from('user_docs').select('program').eq('user_id',u.id).maybeSingle();if(error){toast(friendlyErr(error));return}
@@ -1208,6 +1399,7 @@ VIEWS.user=function({id}){const u=USERS&&USERS.list&&USERS.list.find(x=>x.id===i
   h+=`<div class="card"><div class="row"><span class="sp">Status</span><b style="color:${u.active?'var(--ok)':'var(--bad)'}">${u.active?'Ativo':'Desativado'}</b></div><div class="row" style="margin-top:6px"><span class="sp">Planos</span><b>${u.has_program?'sim':'nenhum ainda'}</b></div><div class="row" style="margin-top:6px"><span class="sp">Criado em</span><span>${new Date(u.created_at).toLocaleDateString('pt-BR')}</span></div></div>`;
   if(!me)h+=`<button class="btn pri block" data-act="manageProg" data-id="${u.id}">Ver / montar planos</button><div style="height:8px"></div>
     ${myActive()?`<button class="btn block" data-act="copyProg" data-id="${u.id}">Enviar uma cópia do meu plano ativo</button><div style="height:8px"></div>`:''}
+    <button class="btn block" data-act="anOpenUser" data-id="${u.id}">🩺 Anamnese e avaliação física</button><div style="height:8px"></div>
     ${MASTER_HISTORY?`<button class="btn block" data-act="go" data-v="uhist" data-id="${u.id}">Ver histórico (somente leitura)</button><div style="height:8px"></div>`:''}`;
   h+=`<button class="btn block" data-act="renameUser" data-id="${u.id}">Alterar nome</button><div style="height:8px"></div>`;
   if(!me)h+=`<button class="btn block" data-act="pwUser" data-id="${u.id}">Redefinir senha</button><div style="height:8px"></div><button class="btn block" data-act="toggleUser" data-id="${u.id}" style="color:${u.active?'var(--bad)':'var(--ok)'}">${u.active?'Desativar usuário':'Reativar usuário'}</button>`;
