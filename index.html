@@ -492,7 +492,7 @@ function sessionsFromTemplate(key,p){const t=WORKOUT_TEMPLATES[key];if(!t)return
     it.sets=sets;it.reps=reps;it.restSec=rest;it.rest=rest>=120?(rest/60)+' min':rest+' s';it.rir=it.kind==='time'||c.cat==='Core'?'':'RIR 2';return it}})}))}
 
 "use strict";
-const APP_VERSION='3.4.0';
+const APP_VERSION='3.4.1';
 const SB_URL='https://zmiupzagkipjyaabzihx.supabase.co',SB_KEY='sb_publishable_G8TxNzbpzE_llnFnk5cXQg_4tCRcPDe',MASTER_HISTORY=true;
 const $=s=>document.querySelector(s);
 let S=null,KEY=null,ME=null,SB=null,MANAGE=null,USERS=null,CUSTOM_CAT=[];
@@ -696,7 +696,6 @@ VIEWS.hoje=function(){
   if(S.active)return viewWorkout();
   const p=myActive();
   let h=hdr('Hoje',(ME&&ME.name?'Olá, '+esc(ME.name.split(' ')[0])+' · ':'')+esc(new Date().toLocaleDateString('pt-BR',{weekday:'long',day:'numeric',month:'long'})),false,syncBadge());
-  if(IOS&&!STANDALONE)h+=`<div class="banner">⚠️ <b>Você está usando pelo navegador.</b> Para melhor funcionamento offline, toque em <b>Compartilhar → Adicionar à Tela de Início</b> e use sempre pelo ícone.</div>`;
   if(!p||!p.sessions.length)return h+`<div class="card hero"><h2>${p?'Seu plano ainda não tem treinos':'Nenhum plano ativo'}</h2><p class="mu sm">Crie um plano (ou adicione treinos a ele) na aba <b>Planos</b>.${ME.role!=='master'?' O master também pode montar para você — aparece aqui automaticamente.':''}</p><button class="btn pri block" data-act="tab" data-t="planos">Ir para Planos</button><div style="height:8px"></div><button class="btn block" data-act="syncNow">Atualizar</button></div>`;
   const pr=progOf(p),w=pr.week,N=weeksOf(p);
   if(w>N)return h+`<div class="card hero"><h2>${esc(p.name)} concluído 🎉</h2><p class="mu sm">Você completou as ${N} semanas. O que vem agora?</p><button class="btn pri block" data-act="repeatPlan">Repetir com cargas atualizadas</button><div style="height:8px"></div><button class="btn block" data-act="tab" data-t="planos">Escolher outro plano</button></div>`;
