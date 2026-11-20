@@ -178,6 +178,7 @@ html[data-theme=light] .ch [stroke="#ff7a3d"]{stroke:var(--ac)}html[data-theme=l
 <div id="toast" hidden></div>
 <input type="file" id="importFile" accept="application/json,.json" hidden>
 <script src="supabase.min.js"></script>
+<script src="avaliacao.js"></script>
 <script>
 /* ===== Banco de exercícios =====  Nome|categoria|grupo|equipamento|tipo
    categoria: M=Musculação C=Cardio K=Core X=Crossfit · tipo: L=carga×reps B=peso corporal T=tempo A=cardio W=WOD */
@@ -514,7 +515,7 @@ function sessionsFromTemplate(key,p){const t=WORKOUT_TEMPLATES[key];if(!t)return
     it.sets=sets;it.reps=reps;it.restSec=rest;it.rest=rest>=120?(rest/60)+' min':rest+' s';it.rir=it.kind==='time'||c.cat==='Core'?'':'RIR 2';return it}})}))}
 
 "use strict";
-const APP_VERSION='3.9.0';
+const APP_VERSION='3.10.0';
 /* ---------- tema (preferência do aparelho) ---------- */
 const THEME_KEY='treino.theme';const MQ_DARK=window.matchMedia?matchMedia('(prefers-color-scheme: dark)'):null;
 function themePref(){try{return localStorage.getItem(THEME_KEY)||'dark'}catch(e){return'dark'}}
@@ -714,10 +715,11 @@ const V={tab:'hoje',stack:[]};
 function go(view,params){V.stack.push({view,params:params||{}});render();scrollTo(0,0)}
 function topV(){return V.stack[V.stack.length-1]}
 function setCtx(){const t=topV(),u=t&&t.params&&t.params.uid;CTX=(u&&MANAGE&&MANAGE.uid===u)?{lib:MANAGE.lib,uid:u}:{lib:null,uid:''}}
-function render(){document.body.classList.toggle('nologin',!ME);if(!ME){$('#app').innerHTML=viewLogin();return}if(ME.active===false){$('#app').innerHTML=viewDisabled();return}
+function render(){const pv=window.AV&&AV.takeover();if(pv){$('#app').innerHTML=pv;return}document.body.classList.toggle('nologin',!ME);if(!ME){$('#app').innerHTML=viewLogin();return}if(ME.active===false){$('#app').innerHTML=viewDisabled();return}
   setCtx();const t=topV();let h;try{h=t?VIEWS[t.view](t.params):VIEWS[V.tab]()}catch(e){console.error(e);h=`<div class="card">Erro: ${esc(e.message)}</div>`}
   $('#app').innerHTML=h;document.querySelectorAll('nav button').forEach(b=>b.classList.toggle('on',b.dataset.t===V.tab))}
 const VIEWS={},ACT={};
+if(window.AV)AV.install({VIEWS,ACT});
 
 /* ---------- HOJE ---------- */
 function itemTarget(e,p,w){const k=e.kind;
@@ -1216,6 +1218,7 @@ VIEWS.log=function({id}){const L=S.logs.find(l=>l.id===id);if(!L)return hdr('Reg
 VIEWS.ajustes=function(){const st=S.settings,p=myActive();
   let h=hdr('Ajustes','Versão '+APP_VERSION,false,syncBadge());
   h+=`<div class="grid2" style="margin-bottom:6px"><button class="btn" data-act="anOpen">🩺 Anamnese</button><button class="btn" data-act="go" data-v="ajuda">❓ Ajuda</button></div>`;
+  h+=`<button class="btn block" data-act="go" data-v="aval" style="margin-bottom:6px">📋 Minha avaliação</button>${ME.role==='master'?'<button class="btn block" data-act="avOpenAll" style="margin-bottom:6px">📋 Avaliações recebidas</button>':''}`;
   {const tp=themePref();h+=`<h3>Aparência</h3><div class="seg">${[['dark','🌙 Escuro'],['light','☀️ Claro'],['auto','📱 Automático']].map(([k,l])=>`<button class="${tp===k?'on':''}" data-act="setTheme" data-t="${k}">${l}</button>`).join('')}</div><p class="mu xs" style="margin:6px 2px 0">Automático segue o modo claro/escuro do iPhone. Vale só para este aparelho.</p>`}
   if(p){const w=progOf(p).week,N=weeksOf(p);h+=`<h3>Plano ativo</h3><div class="card"><div class="b">${esc(p.name)}</div><p class="sm mu">A semana avança sozinha quando você completa todos os treinos. Use os botões só para corrigir.</p>
     <div class="row"><button class="btn smb" data-act="shiftWeek" data-d="-1">◀ Voltar</button><div class="sp" style="text-align:center"><b>Semana ${Math.min(w,N+1)}</b><div class="mu xs">${w<=N?esc(phaseAt(p,w).name):'concluído'}</div></div><button class="btn smb" data-act="shiftWeek" data-d="1">Avançar ▶</button></div></div>`}
@@ -1321,6 +1324,7 @@ VIEWS.ajuda=function(){
     helpRow('📈','Evolução','Resumo da semana, peso corporal e o histórico de cargas e 1RM estimado de cada exercício.')+
     helpRow('🕒','Histórico','Calendário com os dias treinados (laranja; o número no canto indica mais de 1 treino no dia), treinos no mês, média por semana e semanas seguidas com treino. Abaixo, a lista por mês: toque para ver os detalhes ou excluir.')+
     helpRow('🩺','Anamnese','Em Ajustes. <b>Saúde</b>: questionário PAR-Q e histórico (um "Sim" gera alerta para consultar um médico). <b>Nova avaliação</b>: peso, circunferências, dobras e FC de repouso. <b>Resultados</b>: IMC, % de gordura (dobras ou fita), massas gorda e magra, cintura/quadril, cintura/altura, FC máxima e zonas de treino, comparando com a avaliação anterior. O administrador também pode preencher.')+
+    helpRow('📋','Minha avaliação','Em Ajustes. Questionário de saúde, dieta e treino com análise (IMC, gasto calórico, % de gordura da balança ou da fita, água sugerida) e fotos de acompanhamento. Só você e o profissional responsável veem. Quem ainda não tem conta faz a avaliação gratuita pela tela de entrada e recebe um <b>código</b> por e-mail para criar a senha.')+
     helpRow('⚙️','Ajustes','Corrigir a semana do plano, perfil corporal (para as calorias), sons e alertas, conta, sincronização e backup.')+
     helpRow('🌓','Aparência','Em Ajustes: tema Escuro, Claro ou Automático (segue o iPhone). A escolha vale para o aparelho em que foi feita.')+
     helpRow('⬇️','Backup','"Exportar" gera uma cópia extra dos seus dados; "Importar" restaura essa cópia.'));
@@ -1401,6 +1405,7 @@ function viewLogin(){const last=localStorage.getItem('treino.lastEmail')||'';
    <label class="f"><span>Senha</span><input id="lgPass" type="password" autocomplete="current-password"></label>
    <div id="lgMsg" class="sm" style="color:var(--bad);min-height:20px"></div>
    <button class="btn pri block" data-act="login" id="lgBtn">Entrar</button>
+   <div style="margin-top:20px;padding-top:16px;border-top:1px solid var(--s3)"><p class="mu sm">Ainda não tem acesso?</p><button class="btn block" data-act="avOpen">📋 Fazer minha avaliação gratuita</button><button class="btn block" data-act="avOpenCode">🔑 Tenho um código</button><button class="btn ghost block" data-act="avOpenResend">Criar ou redefinir minha senha</button></div>
    ${/^https?:/.test(SB_URL)?'':'<p class="sm" style="color:var(--bad)">Servidor não configurado.</p>'}</div>`}
 function viewDisabled(){return`<div class="login"><h1>Conta desativada</h1><p class="mu">Seu acesso foi desativado pelo administrador. Fale com ele para reativar.</p><button class="btn block" data-act="logout">Sair</button></div>`}
 async function doLogin(){const em=($('#lgEmail').value||'').trim().toLowerCase(),pw=$('#lgPass').value||'',msg=$('#lgMsg'),btn=$('#lgBtn');
@@ -1458,6 +1463,7 @@ VIEWS.user=function({id}){const u=USERS&&USERS.list&&USERS.list.find(x=>x.id===i
   if(!me)h+=`<button class="btn pri block" data-act="manageProg" data-id="${u.id}">Ver / montar planos</button><div style="height:8px"></div>
     ${myActive()?`<button class="btn block" data-act="copyProg" data-id="${u.id}">Enviar uma cópia do meu plano ativo</button><div style="height:8px"></div>`:''}
     <button class="btn block" data-act="anOpenUser" data-id="${u.id}">🩺 Anamnese e avaliação física</button><div style="height:8px"></div>
+    <button class="btn block" data-act="avOpenUser" data-id="${u.id}">📋 Avaliações (formulário) do cliente</button><div style="height:8px"></div>
     ${MASTER_HISTORY?`<button class="btn block" data-act="go" data-v="uhist" data-id="${u.id}">Ver histórico (somente leitura)</button><div style="height:8px"></div>`:''}`;
   h+=`<button class="btn block" data-act="renameUser" data-id="${u.id}">Alterar nome</button><div style="height:8px"></div>`;
   if(!me)h+=`<button class="btn block" data-act="pwUser" data-id="${u.id}">Redefinir senha</button><div style="height:8px"></div><button class="btn block" data-act="toggleUser" data-id="${u.id}" style="color:${u.active?'var(--bad)':'var(--ok)'}">${u.active?'Desativar usuário':'Reativar usuário'}</button>`;
