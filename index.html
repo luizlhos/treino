@@ -141,6 +141,18 @@ body.nologin nav#tabs{display:none}
 .wod{white-space:pre-wrap;font-size:15px;background:var(--s2);border-radius:10px;padding:10px;margin-top:8px}
 .phase{border-left:4px solid var(--pc)}
 .seg{display:flex;background:var(--s2);border-radius:10px;padding:3px;gap:3px}.seg button{flex:1;border:0;background:transparent;color:var(--mu);padding:8px;border-radius:8px;font-family:inherit;font-size:14px}.seg button.on{background:var(--s3);color:var(--tx);font-weight:600}
+/* ---------- tema claro ---------- */
+html[data-theme=light]{--bg:#f3f4f7;--s1:#ffffff;--s2:#eceef2;--s3:#dde1e8;--tx:#14171d;--mu:#68707f;--ac:#f2621f;--ac2:#c94a10;--ok:#14a362;--warn:#b98000;--bad:#dc3b3b;--acu:#2c78e0;--int:#e8781a;--pk:#dc3b3b;--dl:#14a362;color-scheme:light}
+html[data-theme=light] .hero{background:linear-gradient(140deg,#fff1e9,#ffffff 60%);border:1px solid #f6d9c8}
+html[data-theme=light] #timer{background:#fff;box-shadow:0 10px 30px rgba(0,0,0,.15);border:1px solid var(--s3)}html[data-theme=light] #timer.end{background:#e3f6ec}html[data-theme=light] #timer.warn5{background:#fff4d6}
+html[data-theme=light] nav#tabs{background:rgba(255,255,255,.94);border-top:1px solid var(--s3)}
+html[data-theme=light] details p,html[data-theme=light] .mbody{color:var(--tx)}html[data-theme=light] #toast{background:#22262e;color:#fff}html[data-theme=light] #modal{background:rgba(20,22,28,.35)}
+html[data-theme=light] .card{box-shadow:0 1px 2px rgba(16,24,40,.06)}
+html[data-theme=light] .btn.pri,html[data-theme=light] .chip.on,html[data-theme=light] .sg.done .chk{color:#fff}html[data-theme=light] .btn.danger{color:#fff}
+html[data-theme=light] .sw input[type=checkbox]::after{box-shadow:0 1px 3px rgba(0,0,0,.25)}
+html[data-theme=light] .logo svg{stroke:#fff}
+html[data-theme=light] .ch [stroke="#2b303b"]{stroke:var(--s3)}html[data-theme=light] .ch [fill="#9097a6"]{fill:var(--mu)}html[data-theme=light] .ch [stroke="#9097a6"]{stroke:var(--mu)}
+html[data-theme=light] .ch [stroke="#ff7a3d"]{stroke:var(--ac)}html[data-theme=light] .ch [fill="#ff7a3d"]{fill:var(--ac)}html[data-theme=light] .ch [stroke="#0e1014"]{stroke:var(--s1)}
 </style>
 </head>
 <body>
@@ -497,7 +509,12 @@ function sessionsFromTemplate(key,p){const t=WORKOUT_TEMPLATES[key];if(!t)return
     it.sets=sets;it.reps=reps;it.restSec=rest;it.rest=rest>=120?(rest/60)+' min':rest+' s';it.rir=it.kind==='time'||c.cat==='Core'?'':'RIR 2';return it}})}))}
 
 "use strict";
-const APP_VERSION='3.7.0';
+const APP_VERSION='3.8.0';
+/* ---------- tema (preferência do aparelho) ---------- */
+const THEME_KEY='treino.theme';const MQ_DARK=window.matchMedia?matchMedia('(prefers-color-scheme: dark)'):null;
+function themePref(){try{return localStorage.getItem(THEME_KEY)||'dark'}catch(e){return'dark'}}
+function applyTheme(){const p=themePref(),t=p==='auto'?(MQ_DARK&&!MQ_DARK.matches?'light':'dark'):p;document.documentElement.dataset.theme=t;const m=document.querySelector('meta[name="theme-color"]');if(m)m.setAttribute('content',t==='light'?'#f3f4f7':'#0e1014')}
+applyTheme();if(MQ_DARK&&MQ_DARK.addEventListener)MQ_DARK.addEventListener('change',()=>{if(themePref()==='auto')applyTheme()});
 const SB_URL='https://zmiupzagkipjyaabzihx.supabase.co',SB_KEY='sb_publishable_G8TxNzbpzE_llnFnk5cXQg_4tCRcPDe',MASTER_HISTORY=true;
 const $=s=>document.querySelector(s);
 let S=null,KEY=null,ME=null,SB=null,MANAGE=null,USERS=null,CUSTOM_CAT=[];
@@ -1193,6 +1210,7 @@ VIEWS.log=function({id}){const L=S.logs.find(l=>l.id===id);if(!L)return hdr('Reg
 VIEWS.ajustes=function(){const st=S.settings,p=myActive();
   let h=hdr('Ajustes','Versão '+APP_VERSION,false,syncBadge());
   h+=`<div class="grid2" style="margin-bottom:6px"><button class="btn" data-act="anOpen">🩺 Anamnese</button><button class="btn" data-act="go" data-v="ajuda">❓ Ajuda</button></div>`;
+  {const tp=themePref();h+=`<h3>Aparência</h3><div class="seg">${[['dark','🌙 Escuro'],['light','☀️ Claro'],['auto','📱 Automático']].map(([k,l])=>`<button class="${tp===k?'on':''}" data-act="setTheme" data-t="${k}">${l}</button>`).join('')}</div><p class="mu xs" style="margin:6px 2px 0">Automático segue o modo claro/escuro do iPhone. Vale só para este aparelho.</p>`}
   if(p){const w=progOf(p).week,N=weeksOf(p);h+=`<h3>Plano ativo</h3><div class="card"><div class="b">${esc(p.name)}</div><p class="sm mu">A semana avança sozinha quando você completa todos os treinos. Use os botões só para corrigir.</p>
     <div class="row"><button class="btn smb" data-act="shiftWeek" data-d="-1">◀ Voltar</button><div class="sp" style="text-align:center"><b>Semana ${Math.min(w,N+1)}</b><div class="mu xs">${w<=N?esc(phaseAt(p,w).name):'concluído'}</div></div><button class="btn smb" data-act="shiftWeek" data-d="1">Avançar ▶</button></div></div>`}
   {const B=bodyOf(),r=bmrOf(B);h+=`<h3>Perfil corporal</h3><div class="card"><div class="grid2"><label class="f" style="margin-top:0"><span>Sexo</span>${sel('',[['','—'],['M','Masculino'],['F','Feminino']],B.sex,'id="bfSex"')}</label><label class="f" style="margin-top:0"><span>Nascimento (DD/MM/AAAA)</span><input id="bfBirth" data-mask="date" inputmode="numeric" maxlength="10" placeholder="dd/mm/aaaa" value="${esc(isoToBR(B.birth))}" autocomplete="bday"></label></div>
@@ -1276,6 +1294,7 @@ VIEWS.ajuda=function(){
     helpRow('🕒','Histórico','Todos os treinos feitos, por mês. Toque em um para ver os detalhes ou excluir.')+
     helpRow('🩺','Anamnese','Em Ajustes. <b>Saúde</b>: questionário PAR-Q e histórico (um "Sim" gera alerta para consultar um médico). <b>Nova avaliação</b>: peso, circunferências, dobras e FC de repouso. <b>Resultados</b>: IMC, % de gordura (dobras ou fita), massas gorda e magra, cintura/quadril, cintura/altura, FC máxima e zonas de treino, comparando com a avaliação anterior. O administrador também pode preencher.')+
     helpRow('⚙️','Ajustes','Corrigir a semana do plano, perfil corporal (para as calorias), sons e alertas, conta, sincronização e backup.')+
+    helpRow('🌓','Aparência','Em Ajustes: tema Escuro, Claro ou Automático (segue o iPhone). A escolha vale para o aparelho em que foi feita.')+
     helpRow('⬇️','Backup','"Exportar" gera uma cópia extra dos seus dados; "Importar" restaura essa cópia.'));
   return h};
 
@@ -1455,6 +1474,7 @@ Object.assign(ACT,{
   go:d=>{if(d.v==='picker'){PK.q='';PK.cat=d.mode==='insert'?'Crossfit':'';PK.grp=''}go(d.v,{id:d.id,pid:d.pid,sid:d.sid,eid:d.eid,mode:d.mode,uid:d.uid||''})},
   openLog:d=>go('log',{id:d.id}),
   start:d=>{if(S.active){if(S.active.sessionId===d.id){V.tab='hoje';V.stack=[];render();return}confirmBox('Treino em andamento',`Você tem <b>${esc(S.active.name)}</b> em andamento. Descartar e iniciar outro?`,'Descartar e iniciar',()=>{S.active=null;startWorkout(d.id)},true);return}startWorkout(d.id)},
+  setTheme:d=>{try{localStorage.setItem(THEME_KEY,d.t)}catch(e){}applyTheme();render()},
   setDone:d=>{audio();const ax=S.active.exercises[+d.i],s=ax.sets[+d.j];
     document.querySelectorAll(`[data-wf][data-i="${d.i}"][data-j="${d.j}"]`).forEach(el=>s[el.dataset.wf]=num(el.value));
     if(s.done){s.done=false;save();render();return}
