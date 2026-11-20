@@ -141,6 +141,11 @@ body.nologin nav#tabs{display:none}
 .wod{white-space:pre-wrap;font-size:15px;background:var(--s2);border-radius:10px;padding:10px;margin-top:8px}
 .phase{border-left:4px solid var(--pc)}
 .seg{display:flex;background:var(--s2);border-radius:10px;padding:3px;gap:3px}.seg button{flex:1;border:0;background:transparent;color:var(--mu);padding:8px;border-radius:8px;font-family:inherit;font-size:14px}.seg button.on{background:var(--s3);color:var(--tx);font-weight:600}
+/* calendário */
+.calg{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;text-align:center}.cw{font-size:11px;color:var(--mu);padding-bottom:2px}
+.cd{position:relative;aspect-ratio:1;display:grid;place-items:center;border-radius:50%;font-size:14px;color:var(--tx);max-width:40px;margin:0 auto;width:100%}
+.cd.on{background:var(--ac);color:#fff;font-weight:700;cursor:pointer}.cd.td{box-shadow:inset 0 0 0 2px var(--ac)}.cd.on.td{box-shadow:inset 0 0 0 2px var(--tx)}.cd.fu{color:var(--mu);opacity:.45}
+.cd i{position:absolute;top:-3px;right:-3px;background:var(--tx);color:var(--bg);font-style:normal;font-size:10px;min-width:15px;height:15px;line-height:15px;border-radius:8px}
 /* ---------- tema claro ---------- */
 html[data-theme=light]{--bg:#f3f4f7;--s1:#ffffff;--s2:#eceef2;--s3:#dde1e8;--tx:#14171d;--mu:#68707f;--ac:#f2621f;--ac2:#c94a10;--ok:#14a362;--warn:#b98000;--bad:#dc3b3b;--acu:#2c78e0;--int:#e8781a;--pk:#dc3b3b;--dl:#14a362;color-scheme:light}
 html[data-theme=light] .hero{background:linear-gradient(140deg,#fff1e9,#ffffff 60%);border:1px solid #f6d9c8}
@@ -509,7 +514,7 @@ function sessionsFromTemplate(key,p){const t=WORKOUT_TEMPLATES[key];if(!t)return
     it.sets=sets;it.reps=reps;it.restSec=rest;it.rest=rest>=120?(rest/60)+' min':rest+' s';it.rir=it.kind==='time'||c.cat==='Core'?'':'RIR 2';return it}})}))}
 
 "use strict";
-const APP_VERSION='3.8.0';
+const APP_VERSION='3.9.0';
 /* ---------- tema (preferência do aparelho) ---------- */
 const THEME_KEY='treino.theme';const MQ_DARK=window.matchMedia?matchMedia('(prefers-color-scheme: dark)'):null;
 function themePref(){try{return localStorage.getItem(THEME_KEY)||'dark'}catch(e){return'dark'}}
@@ -1189,6 +1194,7 @@ VIEWS.evo=function({id}){const f=findExAny(id);return hdr(f?f.e.name:'Evolução
 /* ---------- HISTÓRICO ---------- */
 VIEWS.historico=function(){let h=hdr('Histórico',`${S.logs.length} treino${S.logs.length===1?'':'s'}`,false,syncBadge());
   if(!S.logs.length)return h+'<div class="empty">Nenhum treino ainda.<br>Comece pela aba <b>Hoje</b>.</div>';
+  h+=calendarHTML(S.logs,'me',true);
   let curM='';S.logs.slice().reverse().forEach(L=>{const m=pISO(L.date).toLocaleDateString('pt-BR',{month:'long',year:'numeric'});if(m!==curM){if(curM)h+='</div>';h+=`<h3>${esc(m)}</h3><div class="card" style="padding:4px 14px">`;curM=m}
     const dur=L.durationSec!=null?Math.round(L.durationSec/60):L.finishedAt&&L.startedAt?Math.round((L.finishedAt-L.startedAt)/60000):null;const ns=L.exercises.reduce((a,x)=>a+(x.kind==='cardio'||x.kind==='wod'?1:doneSets(x).length),0);const vol=logVolume(L);
     h+=`<div class="li tap" data-act="openLog" data-id="${L.id}"><span class="pill" style="min-width:52px;text-align:center">${dshort(L.date)}</span><div class="t"><b>${esc(L.name)}</b><span class="mu sm">${esc(L.planName||'')} · S${L.week} · ${ns} séries/blocos${vol?' · '+(vol/1000).toLocaleString('pt-BR',{maximumFractionDigits:1})+' t':''}${dur?` · ${dur} min`:''}${(k=>k&&k.total?' · 🔥 '+kcalTxt(k):'')(workoutKcal(L))}</span></div><span class="mu">›</span></div>`});
@@ -1236,6 +1242,28 @@ function onImport(inp){const file=inp.files[0];inp.value='';if(!file)return;cons
 VIEWS.weights=function(){const B=bodyOf(),w=weightsSorted(B).reverse();let h=hdr('Peso corporal',w.length+' registro(s)',true);
   h+=`<div class="card">${weightChart(B)}</div><div class="card" style="padding:4px 14px">${w.map((x,i)=>{const prev=w[i+1];const d=prev?r2(x.kg-prev.kg):null;return`<div class="li"><span class="pill" style="min-width:52px;text-align:center">${dshort(x.date)}</span><div class="t"><b>${fnum(x.kg,1)} kg</b><span class="mu sm">${d!=null?(d>0?'+':'')+fnum(d,1)+' kg':'primeiro registro'}</span></div><button class="ib" data-act="delWeight" data-date="${x.date}" style="color:var(--bad)">✕</button></div>`}).join('')}</div>
   <button class="btn pri block" data-act="addWeight">+ Registrar peso</button>`;return h};
+
+/* ---------- CALENDÁRIO DE TREINOS (Histórico) ---------- */
+const CAL={};
+function ymOf(d){return iso(d).slice(0,7)}
+function weekStartISO(s){const d=pISO(s),k=(d.getDay()+6)%7;d.setDate(d.getDate()-k);return iso(d)}
+function weekStreak(logs){const wk=new Set(logs.map(L=>weekStartISO(L.date)));let d=pISO(weekStartISO(iso(new Date())));let n=0;
+  if(!wk.has(iso(d)))d.setDate(d.getDate()-7); // semana atual ainda pode estar em andamento
+  while(wk.has(iso(d))){n++;d.setDate(d.getDate()-7)}return n}
+function calendarHTML(logs,key,tap){const today=iso(new Date()),cur=ymOf(new Date());const ym=CAL[key]||cur;const[y,m]=ym.split('-').map(Number);
+  const by={};logs.forEach(L=>{(by[L.date]=by[L.date]||[]).push(L)});
+  const first=new Date(y,m-1,1),days=new Date(y,m,0).getDate(),lead=(first.getDay()+6)%7;
+  const mLogs=logs.filter(L=>L.date.startsWith(ym)),nDays=Object.keys(by).filter(d=>d.startsWith(ym)).length;
+  const elapsed=ym===cur?new Date().getDate():days,weeks=Math.max(1,elapsed/7);
+  const minYm=logs.length?logs.reduce((a,L)=>L.date<a?L.date:a,logs[0].date).slice(0,7):cur;
+  let h=`<div class="card cal"><div class="row" style="margin-bottom:8px"><button class="ib" data-act="calNav" data-k="${key}" data-d="-1" ${ym<=minYm?'disabled style="opacity:.3"':''}>‹</button><b class="sp" style="text-align:center">${(t=>t.charAt(0).toUpperCase()+t.slice(1))(first.toLocaleDateString('pt-BR',{month:'long',year:'numeric'}))}</b><button class="ib" data-act="calNav" data-k="${key}" data-d="1" ${ym>=cur?'disabled style="opacity:.3"':''}>›</button></div>
+    <div class="calg">${['S','T','Q','Q','S','S','D'].map(d=>`<span class="cw">${d}</span>`).join('')}${'<span></span>'.repeat(lead)}`;
+  for(let d=1;d<=days;d++){const ds=`${ym}-${String(d).padStart(2,'0')}`,L=by[ds],fut=ds>today;
+    h+=`<span class="cd${L?' on':''}${ds===today?' td':''}${fut?' fu':''}" ${L&&tap?`data-act="openLog" data-id="${L[0].id}"`:''} ${L?`title="${esc(L.map(x=>x.name).join(', '))}"`:''}>${d}${L&&L.length>1?`<i>${L.length}</i>`:''}</span>`}
+  h+=`</div><div class="stat" style="margin-top:12px"><div><b>${mLogs.length}</b><span>treinos no mês</span></div><div><b>${(mLogs.length/weeks).toLocaleString('pt-BR',{maximumFractionDigits:1})}</b><span>por semana</span></div><div><b>${weekStreak(logs)}</b><span>semana${weekStreak(logs)===1?'':'s'} seguida${weekStreak(logs)===1?'':'s'}</span></div></div>
+    <div class="mu xs" style="margin-top:8px">${nDays} dia${nDays===1?'':'s'} com treino${ym===cur?' até hoje':''} · "semanas seguidas" conta as semanas (seg–dom) com ao menos 1 treino.</div></div>`;
+  return h}
+ACT.calNav=d=>{const cur=CAL[d.k]||ymOf(new Date());const[y,m]=cur.split('-').map(Number);CAL[d.k]=ymOf(new Date(y,m-1+(+d.d),1));render()};
 
 /* ---------- AJUDA ---------- */
 function helpRow(icon,title,desc){return`<div class="hl"><div class="hi">${icon}</div><div><b>${title}</b><div class="sm mu">${desc}</div></div></div>`}
@@ -1291,7 +1319,7 @@ VIEWS.ajuda=function(){
     helpRow('<b>Banco</b>','Banco de exercícios','Cerca de 300 exercícios (musculação, aeróbico, core e crossfit), com busca e filtro por grupo.'));
   h+=sec('📈 Evolução, Histórico e Ajustes',
     helpRow('📈','Evolução','Resumo da semana, peso corporal e o histórico de cargas e 1RM estimado de cada exercício.')+
-    helpRow('🕒','Histórico','Todos os treinos feitos, por mês. Toque em um para ver os detalhes ou excluir.')+
+    helpRow('🕒','Histórico','Calendário com os dias treinados (laranja; o número no canto indica mais de 1 treino no dia), treinos no mês, média por semana e semanas seguidas com treino. Abaixo, a lista por mês: toque para ver os detalhes ou excluir.')+
     helpRow('🩺','Anamnese','Em Ajustes. <b>Saúde</b>: questionário PAR-Q e histórico (um "Sim" gera alerta para consultar um médico). <b>Nova avaliação</b>: peso, circunferências, dobras e FC de repouso. <b>Resultados</b>: IMC, % de gordura (dobras ou fita), massas gorda e magra, cintura/quadril, cintura/altura, FC máxima e zonas de treino, comparando com a avaliação anterior. O administrador também pode preencher.')+
     helpRow('⚙️','Ajustes','Corrigir a semana do plano, perfil corporal (para as calorias), sons e alertas, conta, sincronização e backup.')+
     helpRow('🌓','Aparência','Em Ajustes: tema Escuro, Claro ou Automático (segue o iPhone). A escolha vale para o aparelho em que foi feita.')+
@@ -1438,7 +1466,7 @@ const UH={},UB={};
 VIEWS.uhist=function({id}){const u=USERS&&USERS.list&&USERS.list.find(x=>x.id===id);let h=hdr('Histórico',esc(u?u.name:''),true);
   if(!UH[id]){SB.from('workout_logs').select('data').eq('user_id',id).eq('deleted',false).order('date',{ascending:false}).limit(200).then(({data,error})=>{UH[id]=error?{err:friendlyErr(error)}:{list:(data||[]).map(r=>r.data)};render()});return h+'<div class="empty">Carregando…</div>'}
   if(UH[id].err)return h+`<div class="card">${esc(UH[id].err)}</div>`;if(!UH[id].list.length)return h+'<div class="empty">Nenhum treino registrado.</div>';
-  const ub=UB[id]&&!UB[id].loading?UB[id]:null;return h+UH[id].list.map(L=>`<div class="card"><div class="row"><b class="sp">${esc(L.name)}${(k=>k&&k.total?` <span class="mu sm">🔥 ${kcalTxt(k)}</span>`:'')(ub&&workoutKcal(L,ub))}</b><span class="mu sm">${dshort(L.date)} · ${esc(L.planName||'')} S${L.week}</span></div>${L.exercises.map(x=>`<div class="sm" style="margin-top:6px"><span class="mu">${KIND_ICON[x.kind||'load']||''} ${esc(x.name)}:</span> ${esc(exSummary(Object.assign({kind:'load'},x)))}</div>`).join('')}</div>`).join('')};
+  const ub=UB[id]&&!UB[id].loading?UB[id]:null;return h+calendarHTML(UH[id].list,'u'+id,false)+UH[id].list.map(L=>`<div class="card"><div class="row"><b class="sp">${esc(L.name)}${(k=>k&&k.total?` <span class="mu sm">🔥 ${kcalTxt(k)}</span>`:'')(ub&&workoutKcal(L,ub))}</b><span class="mu sm">${dshort(L.date)} · ${esc(L.planName||'')} S${L.week}</span></div>${L.exercises.map(x=>`<div class="sm" style="margin-top:6px"><span class="mu">${KIND_ICON[x.kind||'load']||''} ${esc(x.name)}:</span> ${esc(exSummary(Object.assign({kind:'load'},x)))}</div>`).join('')}</div>`).join('')};
 async function adminCall(body){const{data,error}=await SB.functions.invoke('admin-users',{body});
   if(error){let m=error.message;try{const j=await error.context.json();m=j.error||m}catch(e){}throw new Error(m)}if(data&&data.error)throw new Error(data.error);return data}
 function genPass(){const c='ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789';let p='';const a=new Uint32Array(10);crypto.getRandomValues(a);a.forEach(v=>p+=c[v%c.length]);return p}
