@@ -149,7 +149,7 @@
 .av-q{background:var(--s1);border-radius:var(--r,14px);padding:14px;margin:10px 0}
 .av-q.err{outline:2px solid var(--bad)}
 .av-q .t{display:flex;gap:10px;align-items:flex-start;font-weight:600;margin-bottom:8px;line-height:1.3}
-.av-n{flex:none;background:var(--ac);color:#1d0d03;border-radius:999px;min-width:26px;height:26px;display:inline-flex;align-items:center;justify-content:center;font-size:13px;font-weight:700}
+.av-n{flex:none;background:var(--ac);color:#fff;border-radius:999px;min-width:26px;height:26px;display:inline-flex;align-items:center;justify-content:center;font-size:13px;font-weight:700}
 .av-opt{display:flex;gap:10px;align-items:flex-start;background:var(--s2);border:1px solid var(--s3);border-radius:12px;padding:10px 12px;margin:6px 0;cursor:pointer}
 .av-opt input{width:auto;margin-top:3px;flex:none}
 .av-opt.on{border-color:var(--ac);background:color-mix(in srgb,var(--ac) 12%,var(--s2))}
@@ -205,7 +205,7 @@ html[data-theme=light] .av-q{box-shadow:0 1px 2px rgba(16,24,40,.06)}
     let n = 0, h = '';
     if (mode === 'public') {
       h += `<div class="av-q" id="avc_name"><div class="t"><span class="av-n">${++n}</span><span>Nome completo</span></div><input id="av_name" autocomplete="name" maxlength="80" value="${esc(D.name)}"><div class="av-msg" id="avm_name" hidden></div></div>`;
-      h += `<div class="av-q" id="avc_email"><div class="t"><span class="av-n">${++n}</span><span>E-mail</span></div><input id="av_email" type="email" inputmode="email" autocomplete="email" autocapitalize="off" maxlength="254" value="${esc(D.email)}"><div class="av-help">Enviaremos para este e-mail o link para você criar sua senha e ver sua análise.</div><div class="av-msg" id="avm_email" hidden></div></div>`;
+      h += `<div class="av-q" id="avc_email"><div class="t"><span class="av-n">${++n}</span><span>E-mail</span></div><input id="av_email" type="email" inputmode="email" autocomplete="email" autocapitalize="off" maxlength="254" value="${esc(D.email)}"><div class="av-help">Enviaremos para este e-mail um código para você criar sua senha e ver sua análise.</div><div class="av-msg" id="avm_email" hidden></div></div>`;
     }
     for (const s of SECTIONS) {
       h += `<div class="av-sec">${esc(s.t)}</div>`;
