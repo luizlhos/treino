@@ -606,11 +606,11 @@ html[data-theme=light] .av-q{box-shadow:0 1px 2px rgba(16,24,40,.06)}
 
   function viewMine(p) {
     const c = loadList('mine', ME.id);
-    let h = hdr('Minha avaliação', 'Suas respostas e análise', !p.welcome ? true : false);
+    let h = p.embed ? '' : hdr('Minha avaliação', 'Suas respostas e análise', !p.welcome ? true : false);
     if (p.welcome) h += `<div class="av-note">Senha criada! Esta é a sua análise. Abaixo você pode enviar as 4 fotos.</div>`;
     if (c.loading) return h + '<div class="empty">Carregando…</div>';
     if (c.err) return h + `<div class="card">Erro: ${esc(c.err)}</div>`;
-    if (!c.list.length) return h + `<div class="empty">Nenhuma avaliação ainda.<div style="height:10px"></div><button class="btn pri" data-act="avNew">+ Fazer avaliação</button></div>`;
+    if (!c.list.length) return h + `<div class="card"><div class="mu sm">Você ainda não respondeu o questionário de saúde, dieta e treino. Leva uns 8 minutos.</div><div style="height:10px"></div><button class="btn pri block" data-act="avNew">Responder questionário</button></div>`;
     const L = c.list[0];
     h += `<h3>Última · ${esc(new Date(L.created_at).toLocaleDateString('pt-BR'))}</h3>` + resultHtml(L) + photosHtml(L, true);
     setTimeout(() => loadPhotos(L), 0);
@@ -650,8 +650,8 @@ html[data-theme=light] .av-q{box-shadow:0 1px 2px rgba(16,24,40,.06)}
     return h + `<h3>Mais recente</h3>${resultHtml(c.list[0])}<h3>Histórico</h3><div class="card" style="padding:0 14px">${c.list.map(r => listCard(r)).join('')}</div>`;
   }
 
-  function viewAll() {
-    let h = hdr('Avaliações recebidas', 'Todos os clientes', true);
+  function viewAll(p) {
+    let h = p && p.embed ? '' : hdr('Avaliações recebidas', 'Todos os clientes', true);
     const c = AV.cache.all;
     if (!c) {
       AV.cache.all = { loading: true };

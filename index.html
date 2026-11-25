@@ -177,10 +177,10 @@ html[data-theme=light] .ch [stroke="#1f6bff"]{stroke:var(--ac)}html[data-theme=l
 </div>
 <nav id="tabs">
   <button data-act="tab" data-t="hoje"><svg viewBox="0 0 24 24"><path d="M6.5 6.5v11M17.5 6.5v11M3.5 9.5v5M20.5 9.5v5M6.5 12h11"/></svg>Hoje</button>
-  <button data-act="tab" data-t="planos"><svg viewBox="0 0 24 24"><rect x="3.5" y="5" width="17" height="15.5" rx="2.5"/><path d="M3.5 10h17M8 3v4M16 3v4"/></svg>Planos</button>
-  <button data-act="tab" data-t="evolucao"><svg viewBox="0 0 24 24"><path d="M3.5 20h17M5 16l4.5-5 4 3L20 6.5"/><path d="M15.5 6.5H20V11"/></svg>Evolução</button>
-  <button data-act="tab" data-t="historico"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/></svg>Histórico</button>
-  <button data-act="tab" data-t="ajustes"><svg viewBox="0 0 24 24"><path d="M4 7h9M17 7h3M4 12h3M11 12h9M4 17h11M19 17h1"/><circle cx="15" cy="7" r="2"/><circle cx="9" cy="12" r="2"/><circle cx="17" cy="17" r="2"/></svg>Ajustes</button>
+  <button data-act="tab" data-t="treinos"><svg viewBox="0 0 24 24"><rect x="3.5" y="5" width="17" height="15.5" rx="2.5"/><path d="M3.5 10h17M8 3v4M16 3v4"/></svg>Treinos</button>
+  <button data-act="tab" data-t="avaliacao"><svg viewBox="0 0 24 24"><rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 4V3h6v1M9 10h6M9 14h6M9 18h3"/></svg>Avaliação</button>
+  <button data-act="tab" data-t="progresso"><svg viewBox="0 0 24 24"><path d="M3.5 20h17M5 16l4.5-5 4 3L20 6.5"/><path d="M15.5 6.5H20V11"/></svg>Progresso</button>
+  <button data-act="tab" data-t="perfil"><svg viewBox="0 0 24 24"><circle cx="12" cy="8.5" r="3.8"/><path d="M4.5 20.5c1.2-3.8 4-5.7 7.5-5.7s6.3 1.9 7.5 5.7"/></svg>Perfil</button>
 </nav>
 <div id="modal" hidden></div>
 <div id="toast" hidden></div>
@@ -523,7 +523,7 @@ function sessionsFromTemplate(key,p){const t=WORKOUT_TEMPLATES[key];if(!t)return
     it.sets=sets;it.reps=reps;it.restSec=rest;it.rest=rest>=120?(rest/60)+' min':rest+' s';it.rir=it.kind==='time'||c.cat==='Core'?'':'RIR 2';return it}})}))}
 
 "use strict";
-const APP_VERSION='3.11.3';
+const APP_VERSION='3.12.0';
 /* ---------- tema (preferência do aparelho) ---------- */
 const THEME_KEY='treino.theme';const MQ_DARK=window.matchMedia?matchMedia('(prefers-color-scheme: dark)'):null;
 function themePref(){try{return localStorage.getItem(THEME_KEY)||'dark'}catch(e){return'dark'}}
@@ -741,9 +741,9 @@ VIEWS.hoje=function(){
   if(S.active)return viewWorkout();
   const p=myActive();
   let h=hdr('Hoje',(ME&&ME.name?'Olá, '+esc(ME.name.split(' ')[0])+' · ':'')+esc(new Date().toLocaleDateString('pt-BR',{weekday:'long',day:'numeric',month:'long'})),false,`<div class="row" style="gap:6px">${syncBadge()}<button class="ib" data-act="go" data-v="ajuda" aria-label="Ajuda">?</button></div>`);
-  if(!p||!p.sessions.length)return h+`<div class="card hero"><h2>${p?'Seu plano ainda não tem treinos':'Nenhum plano ativo'}</h2><p class="mu sm">Crie um plano (ou adicione treinos a ele) na aba <b>Planos</b>.${ME.role!=='master'?' O master também pode montar para você — aparece aqui automaticamente.':''}</p><button class="btn pri block" data-act="tab" data-t="planos">Ir para Planos</button><div style="height:8px"></div><button class="btn block" data-act="syncNow">Atualizar</button></div>`;
+  if(!p||!p.sessions.length)return h+`<div class="card hero"><h2>${p?'Seu plano ainda não tem treinos':'Nenhum plano ativo'}</h2><p class="mu sm">Crie um plano (ou adicione treinos a ele) na aba <b>Treinos</b>.${ME.role!=='master'?' O master também pode montar para você — aparece aqui automaticamente.':''}</p><button class="btn pri block" data-act="tab" data-t="treinos">Ir para Treinos</button><div style="height:8px"></div><button class="btn block" data-act="syncNow">Atualizar</button></div>`;
   const pr=progOf(p),w=pr.week,N=weeksOf(p);
-  if(w>N)return h+`<div class="card hero"><h2>${esc(p.name)} concluído 🎉</h2><p class="mu sm">Você completou as ${N} semanas. O que vem agora?</p><button class="btn pri block" data-act="repeatPlan">Repetir com cargas atualizadas</button><div style="height:8px"></div><button class="btn block" data-act="tab" data-t="planos">Escolher outro plano</button></div>`;
+  if(w>N)return h+`<div class="card hero"><h2>${esc(p.name)} concluído 🎉</h2><p class="mu sm">Você completou as ${N} semanas. O que vem agora?</p><button class="btn pri block" data-act="repeatPlan">Repetir com cargas atualizadas</button><div style="height:8px"></div><button class="btn block" data-act="go" data-v="planos">Escolher outro plano</button></div>`;
   const ph=phaseAt(p,w),done=doneThisWeek(p),nx=nextSession(p),n=p.sessions.length;
   h+=`<div class="card"><div class="row"><div class="sp"><div class="b">${esc(p.name)}</div><div class="mu sm">Semana ${w} de ${N} · RIR alvo ${esc(ph.rir||'—')}</div></div>${phPill(p,w)}</div>
     ${weekFocus(p,w)?`<div class="sm" style="margin-top:6px">${esc(weekFocus(p,w))}</div>`:''}${weekbar(p,w)}
@@ -851,14 +851,18 @@ function U(){return CTX.uid||''}
 function ua(){return`data-uid="${U()}"`}
 function whoName(){return CTX.uid&&MANAGE?MANAGE.name:''}
 VIEWS.planos=function(){const lib=LIB(),u=U(),own=!u;
-  let h=u?hdr('Planos de '+esc(whoName()),'Alterações são salvas na conta dele automaticamente',true):hdr('Planos',`${lib.plans.length} plano(s)`,false,syncBadge());
+  let h=u?hdr('Planos de '+esc(whoName()),'Alterações são salvas na conta dele automaticamente',true):hdr('Planos de treino','Em andamento, próximos e finalizados',!!topV(),syncBadge());
   if(u)h+=`<div class="banner">✏️ Você está editando os planos de <b>${esc(whoName())}</b>.</div>`;
   const act=planById(lib.activeId,lib);
+  h+=`<h3>Em andamento</h3>`;
   if(act){const N=weeksOf(act);const w=own?progOf(act).week:0;
-    h+=`<h3>Plano ativo</h3><div class="card hero tap" data-act="go" data-v="plan" data-id="${act.id}" ${ua()}><div class="row"><div class="sp"><h2>${esc(act.name)}</h2><div class="mu sm">${N} semanas · ${act.sessions.length} treinos/semana${act.repeat?' · repete':''}${own?` · semana ${Math.min(w,N)}${w>N?' (concluído)':''}`:''}</div></div>${own&&w<=N?phPill(act,w):''}</div>${weekbar(act,own?w:0)}</div>`}
-  const others=lib.plans.filter(p=>p!==act);
-  if(others.length)h+=`<h3>Outros planos</h3><div class="card" style="padding:4px 14px">${others.map(p=>{const pr=own&&S.prog[p.id];return`<div class="li tap" data-act="go" data-v="plan" data-id="${p.id}" ${ua()}><span class="kd">📋</span><div class="t"><b>${esc(p.name)}</b><span class="mu sm">${weeksOf(p)} semanas · ${p.sessions.length} treinos${pr&&pr.week>weeksOf(p)?' · concluído':pr&&pr.week>1?' · parado na semana '+pr.week:''}</span></div><span class="mu">›</span></div>`}).join('')}</div>`;
-  if(!lib.plans.length)h+=`<div class="empty">Nenhum plano ainda.</div>`;
+    h+=`<div class="card hero tap" data-act="go" data-v="plan" data-id="${act.id}" ${ua()}><div class="row"><div class="sp"><h2>${esc(act.name)}</h2><div class="mu sm">${N} semanas · ${act.sessions.length} treinos/semana${act.repeat?' · repete':''}${own?` · semana ${Math.min(w,N)}${w>N?' (concluído)':''}`:''}</div></div>${own&&w<=N?phPill(act,w):''}</div>${weekbar(act,own?w:0)}</div>`}
+  else h+=`<div class="card mu sm">Nenhum plano em andamento.</div>`;
+  const others=lib.plans.filter(p=>p!==act),isDone=p=>own&&S.prog[p.id]&&S.prog[p.id].week>weeksOf(p);
+  const row=p=>{const pr=own&&S.prog[p.id];return`<div class="li tap" data-act="go" data-v="plan" data-id="${p.id}" ${ua()}><span class="kd">📋</span><div class="t"><b>${esc(p.name)}</b><span class="mu sm">${weeksOf(p)} semanas · ${p.sessions.length} treinos${pr&&pr.week>weeksOf(p)?' · concluído':pr&&pr.week>1?' · parado na semana '+pr.week:''}</span></div><span class="mu">›</span></div>`};
+  const nxt=others.filter(p=>!isDone(p)),fin=others.filter(isDone);
+  h+=`<h3>Próximos</h3>${nxt.length?`<div class="card" style="padding:4px 14px">${nxt.map(row).join('')}</div>`:'<div class="card mu sm">Nenhum plano aguardando. Crie um novo para deixar na fila.</div>'}`;
+  if(fin.length)h+=`<h3>Finalizados</h3><div class="card" style="padding:4px 14px">${fin.map(row).join('')}</div>`;
   h+=`<div style="height:12px"></div><button class="btn pri block" data-act="newPlan" ${ua()}>+ Novo plano</button>`;
   return h};
 VIEWS.plan=function({id}){const p=planById(id);if(!p)return hdr('Plano','',true)+'<div class="empty">Não encontrado</div>';
@@ -869,11 +873,11 @@ VIEWS.plan=function({id}){const p=planById(id);if(!p)return hdr('Plano','',true)
     <div class="sw"><span>Repetir automaticamente ao terminar<div class="mu xs">Bom para planos de manutenção contínua</div></span><input type="checkbox" data-plf="repeat" data-pid="${p.id}" ${p.repeat?'checked':''}></div></div>`;
   h+=`<h3>Treinos da semana (sequência)</h3><p class="mu sm" style="margin:-4px 0 0">A semana avança quando todos forem feitos. Para treinar 3×/semana, deixe 3 treinos.</p><div class="card" style="padding:4px 14px">${p.sessions.length?'':'<div class="li mu sm">Nenhum treino ainda.</div>'}${p.sessions.map((s,i,a)=>`<div class="li"><span class="pill" style="min-width:30px;text-align:center">${i+1}</span><div class="t tap" data-act="go" data-v="session" data-id="${s.id}" data-pid="${p.id}" ${ua()}><b>${esc(s.name)}</b><span class="mu sm">${esc(s.groups||'')}${s.groups?' · ':''}${s.exercises.length} exerc.</span></div><button class="ib" data-act="moveSess" data-pid="${p.id}" data-i="${i}" data-d="-1" ${i?'':'disabled style="opacity:.3"'}>↑</button><button class="ib" data-act="moveSess" data-pid="${p.id}" data-i="${i}" data-d="1" ${i<a.length-1?'':'disabled style="opacity:.3"'}>↓</button></div>`).join('')}</div>
     <button class="btn block" data-act="addSess" data-pid="${p.id}" ${ua()}>+ Adicionar treino</button>`;
-  let k=0;h+=`<h3>Periodização — ${N} semanas</h3><div class="card" style="padding:8px 10px"><table><tr><th>Sem</th><th>Fase</th><th>RIR</th><th>Séries</th></tr>${p.phases.map(ph=>Array.from({length:ph.weeks},()=>{k++;return`<tr class="pc-${esc(ph.color)} ${k===w?'cur':''}"><td><b>${k}</b></td><td><span class="ph-dot"></span>${esc(ph.name)}${weekFocus(p,k)?`<div class="mu xs">${esc(weekFocus(p,k))}</div>`:''}</td><td>${esc(ph.rir||'—')}</td><td>${Math.round((+ph.vol||1)*100)}%</td></tr>`}).join('')).join('')}</table>
+  if(!ADV())h+=`<details style="margin-top:14px"><summary>⚙️ Opções avançadas: fases e progressão de cargas</summary>`;let k=0;h+=`<h3>Periodização — ${N} semanas</h3><div class="card" style="padding:8px 10px"><table><tr><th>Sem</th><th>Fase</th><th>RIR</th><th>Séries</th></tr>${p.phases.map(ph=>Array.from({length:ph.weeks},()=>{k++;return`<tr class="pc-${esc(ph.color)} ${k===w?'cur':''}"><td><b>${k}</b></td><td><span class="ph-dot"></span>${esc(ph.name)}${weekFocus(p,k)?`<div class="mu xs">${esc(weekFocus(p,k))}</div>`:''}</td><td>${esc(ph.rir||'—')}</td><td>${Math.round((+ph.vol||1)*100)}%</td></tr>`}).join('')).join('')}</table>
     <div style="height:8px"></div><button class="btn block" data-act="go" data-v="phases" data-id="${p.id}" ${ua()}>Editar periodização</button></div>`;
   h+=`<h3>Progressão de cargas</h3><div class="card"><p class="sm mu" style="margin-top:0">O gerador recalcula as cargas de todas as semanas a partir da <b>carga-base</b> de cada exercício, seguindo as regras de cada fase.</p><button class="btn block" data-act="genAll" data-pid="${p.id}" ${ua()}>Regerar progressão de todos</button>
     ${own&&isAct?`<div style="height:8px"></div><button class="btn block" data-act="repeatPlan">Novo ciclo com cargas atualizadas</button>`:''}</div>`;
-  if(p.tips&&p.tips.length)h+=`<details><summary>⚠️ Erros a evitar</summary>${p.tips.map(t=>`<p><b>${esc(t[0])}</b><br>${esc(t[1])}</p>`).join('')}</details>`;
+  if(!ADV())h+=`</details>`;if(p.tips&&p.tips.length)h+=`<details><summary>⚠️ Erros a evitar</summary>${p.tips.map(t=>`<p><b>${esc(t[0])}</b><br>${esc(t[1])}</p>`).join('')}</details>`;
   if(p.nutrition&&p.nutrition.length)h+=`<details><summary>🍽️ Nutrição & suplementação</summary>${p.nutrition.map(t=>`<p><b>${esc(t[0])}</b><br>${esc(t[1])}</p>`).join('')}</details>`;
   return h};
 VIEWS.phases=function({id}){const p=planById(id);if(!p)return hdr('Periodização','',true);const N=weeksOf(p);
@@ -1094,15 +1098,15 @@ function kv(l,v,s,c){return`<div class="row" style="padding:7px 0;border-top:1px
 function dl(a,b,inv){if(a==null||b==null)return'';const d=r1(a-b);if(!d)return'<span class="mu xs"> =</span>';const good=inv?d<0:d>0;return` <span class="xs" style="color:${good?'var(--ok)':'var(--warn)'}">${d>0?'+':''}${String(d).replace('.',',')}</span>`}
 const fz=v=>v==null?'—':String(v).replace('.',',');
 VIEWS.anam=function({uid}){const c=anamCtx(uid);if(!c)return hdr('Anamnese','',true)+'<div class="empty">Carregando…</div>';const a=anamOf(c.lib),k=anamBasics(c,a);
-  let h=hdr('Anamnese',c.self?'Saúde, medidas e composição corporal':'de '+esc(c.name),true);
-  h+=`<div class="seg">${[['res','Resultados'],['aval','Nova avaliação'],['saude','Saúde']].map(([t,l])=>`<button class="${ANM_TAB===t?'on':''}" data-act="anTab" data-t="${t}" data-uid="${uid||''}">${l}</button>`).join('')}</div>`;
+  if(ME.role!=='master')ANM_TAB='res';let h=hdr('Avaliação física',c.self?'Medidas e composição corporal':'de '+esc(c.name),true);
+  h+=ME.role!=='master'?'':`<div class="seg">${[['res','Resultados'],['aval','Nova medição'],['saude','Saúde (anamnese)']].map(([t,l])=>`<button class="${ANM_TAB===t?'on':''}" data-act="anTab" data-t="${t}" data-uid="${uid||''}">${l}</button>`).join('')}</div>`;
   if(parqAlert(a.health))h+=`<div class="sug down" style="margin:10px 0 0">⚠️ Há resposta <b>"Sim"</b> no questionário de saúde. Recomenda-se avaliação médica antes de aumentar a intensidade dos treinos.</div>`;
   const hasH=k.height||a.evals.some(x=>x.height);const miss=[!k.sex&&'sexo',!k.birth&&'data de nascimento',!hasH&&'altura'].filter(Boolean);
   if(ANM_TAB==='saude')return h+anamHealthForm(a,k,uid);
   if(ANM_TAB==='aval')return h+anamEvalForm(a,k,uid,c);
   const ev=a.evals.slice().sort((x,y)=>x.date<y.date?1:-1);
   if(miss.length)h+=`<div class="card sm mu">Para todos os cálculos falta: <b>${miss.join(', ')}</b>. Preencha na aba <b>Saúde</b>${!hasH?' (a altura vai na avaliação)':''}.</div>`;
-  if(!ev.length)return h+`<div class="empty">Nenhuma avaliação ainda.<div style="height:10px"></div><button class="btn pri" data-act="anTab" data-t="aval" data-uid="${uid||''}">+ Nova avaliação</button></div>`;
+  if(!ev.length)return h+(ME.role==='master'?`<div class="empty">Nenhuma medição ainda.<div style="height:10px"></div><button class="btn pri" data-act="anTab" data-t="aval" data-uid="${uid||''}">+ Nova medição</button></div>`:`<div class="empty">Nenhuma avaliação física ainda. Seu treinador registra aqui suas medidas.</div>`);
   const E=ev[0],R=evalCalc(E,k),P=ev[1]?evalCalc(ev[1],k):null;
   h+=`<h3>Avaliação de ${isoToBR(E.date)}${P?` <span class="mu xs" style="text-transform:none;letter-spacing:0">vs ${isoToBR(ev[1].date)}</span>`:''}</h3><div class="card" style="padding:6px 14px">`;
   h+=kv('Peso',R.kg?fz(R.kg)+' kg'+(P?dl(R.kg,P.kg,true):''):'—');
@@ -1122,7 +1126,7 @@ VIEWS.anam=function({uid}){const c=anamCtx(uid);if(!c)return hdr('Anamnese','',t
   return h};
 function inp(id,l,v,ph,mode){return`<label class="f"><span>${l}</span><input id="${id}" inputmode="${mode||'decimal'}" value="${v??''}" placeholder="${ph||''}"></label>`}
 function anamHealthForm(a,k,uid){const H=a.health;
-  let h=`<h3>Dados básicos</h3><div class="card"><div class="grid2"><label class="f" style="margin-top:0"><span>Sexo</span>${sel('',[['','—'],['M','Masculino'],['F','Feminino']],k.sex,'id="anSex"')}</label><label class="f" style="margin-top:0"><span>Nascimento</span><input id="anBirth" data-mask="date" inputmode="numeric" placeholder="DD/MM/AAAA" value="${isoToBR(k.birth)}"></label></div><div class="mu xs" style="margin-top:6px">Usados nos cálculos. Se já estiverem no Perfil corporal (Ajustes), prevalecem os de lá.</div></div>`;
+  let h=`<h3>Dados básicos</h3><div class="card"><div class="grid2"><label class="f" style="margin-top:0"><span>Sexo</span>${sel('',[['','—'],['M','Masculino'],['F','Feminino']],k.sex,'id="anSex"')}</label><label class="f" style="margin-top:0"><span>Nascimento</span><input id="anBirth" data-mask="date" inputmode="numeric" placeholder="DD/MM/AAAA" value="${isoToBR(k.birth)}"></label></div><div class="mu xs" style="margin-top:6px">Usados nos cálculos. Se já estiverem no Perfil corporal (Perfil), prevalecem os de lá.</div></div>`;
   h+=`<h3>Prontidão para atividade física (PAR-Q)</h3><div class="card" style="padding:4px 14px">${PARQ.map((q,i)=>`<div style="padding:9px 0;border-top:${i?'1px solid var(--s3)':'0'}"><div class="sm">${i+1}. ${q}</div><div class="row" style="gap:8px;margin-top:6px">${[['1','Sim'],['0','Não']].map(([v,l])=>`<label class="chip" style="display:inline-flex;gap:6px;align-items:center"><input type="radio" name="pq${i}" value="${v}" ${H.parq[i]===(v==='1')?'checked':''}> ${l}</label>`).join('')}</div></div>`).join('')}</div>`;
   h+=`<h3>Histórico</h3><div class="card">${[['anObj','Objetivo','obj','ex: hipertrofia, emagrecimento, condicionamento'],['anAct','Atividade física atual','act','ex: musculação 5×/sem há 2 anos'],['anCond','Doenças / condições de saúde','cond','ex: nenhuma'],['anInj','Lesões, dores ou limitações','inj','ex: dor no ombro direito em supino'],['anSurg','Cirurgias','surg',''],['anMeds','Medicamentos em uso','meds',''],['anSmoke','Tabagismo / álcool','smoke',''],['anNotes','Observações','notes','sono, alimentação, estresse…']].map(([id,l,f,ph])=>`<label class="f"><span>${l}</span><textarea id="${id}" rows="2" placeholder="${ph}">${esc(H[f]||'')}</textarea></label>`).join('')}
     <button class="btn pri block" data-act="anSaveHealth" data-uid="${uid||''}" style="margin-top:10px">Salvar</button></div>`;
@@ -1191,7 +1195,7 @@ function evoBody(itemId){const p=myActive();const f=p&&exIn(p,itemId);
   if(f&&p)h+=`<div class="card">${chart(f.e,p)}</div>`;
   if(rec.length)h+=`<h3>Registros</h3><div class="card" style="padding:6px 10px"><table><tr><th>Data</th><th>Sem</th><th>Séries</th><th>1RM</th></tr>${rec.map(({L,x})=>{const r=Math.max(0,...doneSets(x).map(s=>e1rm(s.kg,s.reps)));return`<tr class="tap" data-act="openLog" data-id="${L.id}"><td>${dshort(L.date)}</td><td>${L.week}${L.planId!==(p&&p.id)?'<span class="mu xs"> *</span>':''}</td><td>${esc(exSummary(x))}</td><td>${r?fkg(Math.round(r*10)/10):'—'}</td></tr>`}).join('')}</table>${rec.some(({L})=>L.planId!==(p&&p.id))?'<div class="mu xs" style="padding:6px 4px">* feito em outro plano</div>':''}</div>`;
   return h}
-VIEWS.evolucao=function(){const p=myActive();let h=hdr('Evolução',p?esc(p.name):'',false,syncBadge());
+VIEWS.evolucao=function(){const p=myActive();let h=hdr('Progresso',p?esc(p.name):'',false,syncBadge())+progSeg('evo');
   if(!p||!p.sessions.length)return h+'<div class="empty">Sem plano ativo.</div>';
   let sel=S.settings.progEx;if(!sel||!exIn(p,sel)){const L=S.logs[S.logs.length-1];const c=L&&L.exercises.find(x=>exIn(p,x.exId));sel=c?c.exId:(p.sessions.find(s=>s.exercises.length)||{exercises:[{}]}).exercises[0].id}
   const inPlan=S.logs.filter(L=>L.planId===p.id),w=progOf(p).week,N=weeksOf(p);const vol=inPlan.filter(L=>L.week===w).reduce((a,L)=>a+logVolume(L),0);
@@ -1202,7 +1206,7 @@ VIEWS.evolucao=function(){const p=myActive();let h=hdr('Evolução',p?esc(p.name
 VIEWS.evo=function({id}){const f=findExAny(id);return hdr(f?f.e.name:'Evolução',f?esc(f.s.name):'',true)+evoBody(id)};
 
 /* ---------- HISTÓRICO ---------- */
-VIEWS.historico=function(){let h=hdr('Histórico',`${S.logs.length} treino${S.logs.length===1?'':'s'}`,false,syncBadge());
+VIEWS.historico=function(){let h=hdr('Progresso',`${S.logs.length} treino${S.logs.length===1?'':'s'} registrado${S.logs.length===1?'':'s'}`,false,syncBadge())+progSeg('hist');
   if(!S.logs.length)return h+'<div class="empty">Nenhum treino ainda.<br>Comece pela aba <b>Hoje</b>.</div>';
   h+=calendarHTML(S.logs,'me',true);
   let curM='';S.logs.slice().reverse().forEach(L=>{const m=pISO(L.date).toLocaleDateString('pt-BR',{month:'long',year:'numeric'});if(m!==curM){if(curM)h+='</div>';h+=`<h3>${esc(m)}</h3><div class="card" style="padding:4px 14px">`;curM=m}
@@ -1212,7 +1216,7 @@ VIEWS.historico=function(){let h=hdr('Histórico',`${S.logs.length} treino${S.lo
 VIEWS.log=function({id}){const L=S.logs.find(l=>l.id===id);if(!L)return hdr('Registro','',true)+'<div class="empty">Não encontrado</div>';
   const dur=L.durationSec!=null?Math.round(L.durationSec/60):L.finishedAt&&L.startedAt?Math.round((L.finishedAt-L.startedAt)/60000):null;
   let h=hdr(L.name,`${dlong(L.date)} · ${esc(L.planName||'')} · S${L.week}${dur?` · ${dur} min`:''}`,true);
-  {const k=workoutKcal(L);h+=k?`<div class="card"><div class="row"><span class="kd">🔥</span><div class="sp"><b>${kcalTxt(k)}</b> <span class="mu sm">gasto estimado</span><div class="mu sm">~${k.active} kcal ativas · ${k.min} min${k.hr?' · cardio pela FC':''}</div></div></div><div class="mu xs" style="margin-top:6px">Estimativa pelo seu metabolismo basal e pela intensidade de cada bloco (±20–30%). "Ativas" é comparável às calorias ativas do relógio; o total inclui o metabolismo de repouso.</div></div>`:`<div class="card sm mu">🔥 Preencha seu <b>perfil corporal</b> em Ajustes para ver o gasto calórico estimado.</div>`}
+  {const k=workoutKcal(L);h+=k?`<div class="card"><div class="row"><span class="kd">🔥</span><div class="sp"><b>${kcalTxt(k)}</b> <span class="mu sm">gasto estimado</span><div class="mu sm">~${k.active} kcal ativas · ${k.min} min${k.hr?' · cardio pela FC':''}</div></div></div><div class="mu xs" style="margin-top:6px">Estimativa pelo seu metabolismo basal e pela intensidade de cada bloco (±20–30%). "Ativas" é comparável às calorias ativas do relógio; o total inclui o metabolismo de repouso.</div></div>`:`<div class="card sm mu">🔥 Preencha seu <b>perfil corporal</b> em Perfil para ver o gasto calórico estimado.</div>`}
   h+=`<p class="mu sm">Toque nos valores para corrigir.</p>`;
   L.exercises.forEach((x,i)=>{h+=`<div class="card ex"><b>${KIND_ICON[x.kind]||''} ${esc(x.name)}</b>`;
     if(x.kind==='cardio'||x.kind==='wod')h+=`<div class="sm" style="margin-top:6px">${esc(exSummary(x))}</div>`;
@@ -1224,9 +1228,10 @@ VIEWS.log=function({id}){const L=S.logs.find(l=>l.id===id);if(!L)return hdr('Reg
 
 /* ---------- AJUSTES ---------- */
 VIEWS.ajustes=function(){const st=S.settings,p=myActive();
-  let h=hdr('Ajustes','Versão '+APP_VERSION,false,syncBadge());
-  h+=`<div class="grid2" style="margin-bottom:6px"><button class="btn" data-act="anOpen">🩺 Anamnese</button><button class="btn" data-act="go" data-v="ajuda">❓ Ajuda</button></div>`;
-  h+=`<button class="btn block" data-act="go" data-v="aval" style="margin-bottom:6px">📋 Minha avaliação</button>${ME.role==='master'?'<button class="btn block" data-act="avOpenAll" style="margin-bottom:6px">📋 Avaliações recebidas</button>':''}`;
+  let h=hdr('Perfil',esc(ME.name||'')+' · versão '+APP_VERSION,false,syncBadge());
+  const mi=(act,ic,t,d,x='')=>`<div class="li tap" data-act="${act}" ${x}><span class="kd">${ic}</span><div class="t"><b>${t}</b><span class="mu sm">${d}</span></div><span class="mu">›</span></div>`;
+  h+=`<div class="card" style="padding:4px 14px">${mi('go','📋','Planos de treino','Em andamento, próximos e finalizados','data-v="planos"')}${mi('tab','🩺','Avaliação','Questionário e avaliação física','data-t="avaliacao"')}${ME.role==='master'?mi('openUsers','👥','Clientes','Planos, avaliações e acessos'):''}${mi('go','❓','Ajuda','Como usar cada parte do app','data-v="ajuda"')}</div>`;
+  h+=`<div class="card"><div class="sw"><span>Sempre mostrar opções avançadas<div class="mu xs">Mostra fases, RIR e progressão de cargas abertas nos planos. Deixe desligado para uma visão mais simples.</div></span><input type="checkbox" data-sf="adv" ${st.adv?'checked':''}></div></div>`;
   {const tp=themePref();h+=`<h3>Aparência</h3><div class="seg">${[['dark','🌙 Escuro'],['light','☀️ Claro'],['auto','📱 Automático']].map(([k,l])=>`<button class="${tp===k?'on':''}" data-act="setTheme" data-t="${k}">${l}</button>`).join('')}</div><p class="mu xs" style="margin:6px 2px 0">Automático segue o modo claro/escuro do iPhone. Vale só para este aparelho.</p>`}
   if(p){const w=progOf(p).week,N=weeksOf(p);h+=`<h3>Plano ativo</h3><div class="card"><div class="b">${esc(p.name)}</div><p class="sm mu">A semana avança sozinha quando você completa todos os treinos. Use os botões só para corrigir.</p>
     <div class="row"><button class="btn smb" data-act="shiftWeek" data-d="-1">◀ Voltar</button><div class="sp" style="text-align:center"><b>Semana ${Math.min(w,N+1)}</b><div class="mu xs">${w<=N?esc(phaseAt(p,w).name):'concluído'}</div></div><button class="btn smb" data-act="shiftWeek" data-d="1">Avançar ▶</button></div></div>`}
@@ -1250,6 +1255,30 @@ function onImport(inp){const file=inp.files[0];inp.value='';if(!file)return;cons
   if(!D||!Array.isArray(D.logs)){toast('Este arquivo não é um backup do app');return}
   confirmBox('Importar backup',`<p>Os dados atuais da sua conta serão <b>substituídos</b>:</p>${diffTable([['Treinos registrados',S.logs.length,`<b>${D.logs.length}</b>`],['Planos',S.lib.plans.length,`<b>${D.lib?D.lib.plans.length:(D.program?1:0)}</b>`]],['','Atual','Backup'])}`,'Substituir dados',()=>{const keep=S._sync;S=D;migrate();S._sync=Object.assign(freshSync(),{lastPull:keep.lastPull,dirtyLogs:S.logs.map(L=>L.id)});commit();V.tab='hoje';V.stack=[];render();toast('Backup importado')},true)};rd.readAsText(file)}
 
+function ADV(){return!!(S&&S.settings&&S.settings.adv)}
+let PROG='evo';
+function progSeg(t){return`<div class="seg" style="margin-bottom:10px">${[['evo','📈 Evolução'],['hist','🕒 Histórico']].map(([k,l])=>`<button class="${t===k?'on':''}" data-act="progTab" data-t="${k}">${l}</button>`).join('')}</div>`}
+VIEWS.progresso=function(){return PROG==='hist'?VIEWS.historico():VIEWS.evolucao()};
+VIEWS.perfil=function(){return VIEWS.ajustes()};
+VIEWS.treinos=function(){const p=myActive();
+  let h=hdr('Treinos','Toque em um treino para ver ou trocar exercícios',false,syncBadge());
+  if(!p)return h+`<div class="card hero"><h2>Você ainda não tem um treino</h2><p class="mu sm">Crie um plano a partir de um modelo pronto ou em branco.${ME.role!=='master'?' Seu treinador também pode montar para você.':''}</p><button class="btn pri block" data-act="newPlan">+ Criar meu plano</button><div style="height:8px"></div><button class="btn block" data-act="go" data-v="planos">Ver meus planos</button></div>`;
+  const w=progOf(p).week,N=weeksOf(p),done=doneThisWeek(p),nx=nextSession(p);
+  h+=`<div class="card"><div class="row"><div class="sp"><div class="mu xs b">MEU TREINO ATUAL</div><div class="b" style="font-size:18px">${esc(p.name)}</div><div class="mu sm">${w>N?'Concluído':'Semana '+w+' de '+N} · ${p.sessions.length} treino${p.sessions.length===1?'':'s'} por semana</div></div>${w<=N?phPill(p,w):''}</div>${weekbar(p,w)}
+    <div style="margin-top:6px">${p.sessions.map((x,i)=>`<div class="li tap" data-act="go" data-v="session" data-id="${x.id}" data-pid="${p.id}"><span class="pill" style="min-width:30px;text-align:center">${String.fromCharCode(65+i)}</span><div class="t"><b>${esc(x.name)}</b><span class="mu sm">${x.exercises.length} exercício${x.exercises.length===1?'':'s'}${x.groups?' · '+esc(x.groups):''}</span></div>${done.has(x.id)?'<span class="ok sm b">feito ✓</span>':nx&&nx.id===x.id?'<span class="pill" style="background:var(--ac);color:#fff">próximo</span>':''}<span class="mu">›</span></div>`).join('')||'<div class="li mu sm">Nenhum treino ainda.</div>'}</div></div>
+    <div class="grid2"><button class="btn" data-act="addSess" data-pid="${p.id}">+ Adicionar treino</button><button class="btn" data-act="go" data-v="planos">Planos de treino</button></div>
+    <div style="height:8px"></div><button class="btn block" data-act="go" data-v="plan" data-id="${p.id}">⚙️ Configurar plano${ADV()?' (fases e cargas)':''}</button>`;
+  return h};
+VIEWS.avaliacao=function(){const isM=ME.role==='master';
+  let h=hdr('Avaliação',isM?'Questionários e avaliações físicas':'Seu questionário e sua avaliação física',false,syncBadge());
+  if(isM)h+=`<div class="seg" style="margin-bottom:10px">${[['rec','Recebidas'],['mine','Minha']].map(([k,l])=>`<button class="${AVT===k?'on':''}" data-act="avTab" data-t="${k}">${l}</button>`).join('')}</div>`;
+  if(isM&&AVT==='rec')return h+(window.AV&&VIEWS.avall?VIEWS.avall({embed:true}):'');
+  const a=anamOf(S.lib),ev=(a.evals||[]).slice().sort((x,y)=>(y.date||'').localeCompare(x.date||'')),L=ev[0];
+  h+=`<h3>Avaliação física</h3><div class="card">${L?`<div class="row"><div class="sp"><b>Última medição · ${esc(dshort?dshort(L.date):L.date)}</b><div class="mu sm">${ev.length} medição${ev.length===1?'':'ões'} registrada${ev.length===1?'':'s'}</div></div></div>`:`<div class="mu sm">${isM?'Nenhuma medição ainda.':'Seu treinador registra aqui as medidas, dobras cutâneas e bioimpedância.'}</div>`}
+    ${L||isM?`<div style="height:8px"></div><button class="btn block" data-act="anOpen">${L?'Ver avaliação física':'+ Registrar medição'}</button>`:''}</div>`;
+  h+=`<h3>Questionário</h3>`+(window.AV&&VIEWS.aval?VIEWS.aval({embed:true}):'');
+  return h};
+let AVT='rec';
 VIEWS.weights=function(){const B=bodyOf(),w=weightsSorted(B).reverse();let h=hdr('Peso corporal',w.length+' registro(s)',true);
   h+=`<div class="card">${weightChart(B)}</div><div class="card" style="padding:4px 14px">${w.map((x,i)=>{const prev=w[i+1];const d=prev?r2(x.kg-prev.kg):null;return`<div class="li"><span class="pill" style="min-width:52px;text-align:center">${dshort(x.date)}</span><div class="t"><b>${fnum(x.kg,1)} kg</b><span class="mu sm">${d!=null?(d>0?'+':'')+fnum(d,1)+' kg':'primeiro registro'}</span></div><button class="ib" data-act="delWeight" data-date="${x.date}" style="color:var(--bad)">✕</button></div>`}).join('')}</div>
   <button class="btn pri block" data-act="addWeight">+ Registrar peso</button>`;return h};
@@ -1287,7 +1316,7 @@ VIEWS.ajuda=function(){
     helpRow('<b>4×8–12</b>','Séries × repetições','4 séries de 8 a 12 repetições. Ao atingir o topo da faixa (12) em todas as séries, é hora de subir a carga.')+
     helpRow('<b>90 s</b>','Descanso','Tempo de descanso entre as séries. O cronômetro dispara sozinho ao concluir cada série.')+
     helpRow('<b>Sem 1/4</b>','Semana do plano','Semana atual e total de semanas do plano. Avança sozinha quando todos os treinos da semana são concluídos.')+
-    helpRow('🔥','Gasto calórico estimado','Estimativa baseada no seu metabolismo (Ajustes → Perfil corporal) e no tempo de treino. É uma média, para comparar com o relógio.')+
+    helpRow('🔥','Gasto calórico estimado','Estimativa baseada no seu metabolismo (Perfil → Perfil corporal) e no tempo de treino. É uma média, para comparar com o relógio.')+
     helpRow('1RM','1RM estimado','Carga máxima estimada para 1 repetição, calculada a partir das séries registradas (aparece em Evolução).'),true);
   h+=sec('🏷️ Tipos de exercício',
     helpRow(KIND_ICON.load,'Carga × reps','Exercício com peso. Registre kg, repetições e RIR de cada série.')+
@@ -1328,13 +1357,13 @@ VIEWS.ajuda=function(){
     helpRow('<b>↑ ↓</b>','Reordenar','Muda a ordem de treinos, exercícios e fases.')+
     helpRow('<b>Duplicar / Excluir</b>','Duplicar ou excluir','Copia ou apaga o plano, o treino ou o exercício.')+
     helpRow('<b>Banco</b>','Banco de exercícios','Cerca de 300 exercícios (musculação, aeróbico, core e crossfit), com busca e filtro por grupo.'));
-  h+=sec('📈 Evolução, Histórico e Ajustes',
-    helpRow('📈','Evolução','Resumo da semana, peso corporal e o histórico de cargas e 1RM estimado de cada exercício.')+
-    helpRow('🕒','Histórico','Calendário com os dias treinados (laranja; o número no canto indica mais de 1 treino no dia), treinos no mês, média por semana e semanas seguidas com treino. Abaixo, a lista por mês: toque para ver os detalhes ou excluir.')+
-    helpRow('🩺','Anamnese','Em Ajustes. <b>Saúde</b>: questionário PAR-Q e histórico (um "Sim" gera alerta para consultar um médico). <b>Nova avaliação</b>: peso, circunferências, dobras e FC de repouso. <b>Resultados</b>: IMC, % de gordura (dobras ou fita), massas gorda e magra, cintura/quadril, cintura/altura, FC máxima e zonas de treino, comparando com a avaliação anterior. O administrador também pode preencher.')+
-    helpRow('📋','Minha avaliação','Em Ajustes. Questionário de saúde, dieta e treino com análise (IMC, gasto calórico, % de gordura da balança ou da fita, água sugerida) e fotos de acompanhamento. Só você e o profissional responsável veem. Quem ainda não tem conta faz a avaliação gratuita pela tela de entrada e recebe um <b>código</b> por e-mail para criar a senha.')+
-    helpRow('⚙️','Ajustes','Corrigir a semana do plano, perfil corporal (para as calorias), sons e alertas, conta, sincronização e backup.')+
-    helpRow('🌓','Aparência','Em Ajustes: tema Escuro, Claro ou Automático (segue o iPhone). A escolha vale para o aparelho em que foi feita.')+
+  h+=sec('📈 Progresso, Avaliação e Perfil',
+    helpRow('📈','Progresso','Aba Progresso. <b>Evolução</b>: resumo da semana, peso corporal e o histórico de cargas e 1RM de cada exercício. <b>Histórico</b>: calendário com os dias treinados e a lista de treinos.')+
+    helpRow('📅','Treinos','Aba Treinos: o plano atual e seus treinos (A, B, C…). Toque em um treino para ver, trocar, adicionar ou remover exercícios. Todos os planos (em andamento, próximos e finalizados) ficam em Perfil → Planos de treino.')+
+    helpRow('🩺','Avaliação','Aba Avaliação. <b>Questionário</b>: saúde, dieta e rotina, respondido por você (com análise de IMC, gasto calórico, % de gordura e água). <b>Avaliação física</b>: medidas, dobras e bioimpedância, registradas pelo seu treinador.')+
+    helpRow('⚡','Opções avançadas','Em Perfil. Ligue <b>Sempre mostrar opções avançadas</b> para ver fases, RIR e progressão de cargas abertas nos planos.')+
+    helpRow('👤','Perfil','Planos de treino, avaliação, ajuda, aparência, perfil corporal (para as calorias), sons e alertas, conta e backup.')+
+    helpRow('🌓','Aparência','Em Perfil: tema Escuro, Claro ou Automático (segue o iPhone). A escolha vale para o aparelho em que foi feita.')+
     helpRow('⬇️','Backup','"Exportar" gera uma cópia extra dos seus dados; "Importar" restaura essa cópia.'));
   return h};
 
@@ -1470,8 +1499,8 @@ VIEWS.user=function({id}){const u=USERS&&USERS.list&&USERS.list.find(x=>x.id===i
   h+=`<div class="card"><div class="row"><span class="sp">Status</span><b style="color:${u.active?'var(--ok)':'var(--bad)'}">${u.active?'Ativo':'Desativado'}</b></div><div class="row" style="margin-top:6px"><span class="sp">Planos</span><b>${u.has_program?'sim':'nenhum ainda'}</b></div><div class="row" style="margin-top:6px"><span class="sp">Criado em</span><span>${new Date(u.created_at).toLocaleDateString('pt-BR')}</span></div></div>`;
   if(!me)h+=`<button class="btn pri block" data-act="manageProg" data-id="${u.id}">Ver / montar planos</button><div style="height:8px"></div>
     ${myActive()?`<button class="btn block" data-act="copyProg" data-id="${u.id}">Enviar uma cópia do meu plano ativo</button><div style="height:8px"></div>`:''}
-    <button class="btn block" data-act="anOpenUser" data-id="${u.id}">🩺 Anamnese e avaliação física</button><div style="height:8px"></div>
-    <button class="btn block" data-act="avOpenUser" data-id="${u.id}">📋 Avaliações (formulário) do cliente</button><div style="height:8px"></div>
+    <button class="btn block" data-act="avOpenUser" data-id="${u.id}">📋 Questionário do cliente</button><div style="height:8px"></div>
+    <button class="btn block" data-act="anOpenUser" data-id="${u.id}">📏 Avaliação física do cliente</button><div style="height:8px"></div>
     ${MASTER_HISTORY?`<button class="btn block" data-act="go" data-v="uhist" data-id="${u.id}">Ver histórico (somente leitura)</button><div style="height:8px"></div>`:''}`;
   h+=`<button class="btn block" data-act="renameUser" data-id="${u.id}">Alterar nome</button><div style="height:8px"></div>`;
   if(!me)h+=`<button class="btn block" data-act="pwUser" data-id="${u.id}">Redefinir senha</button><div style="height:8px"></div><button class="btn block" data-act="toggleUser" data-id="${u.id}" style="color:${u.active?'var(--bad)':'var(--ok)'}">${u.active?'Desativar usuário':'Reativar usuário'}</button>`;
@@ -1512,6 +1541,8 @@ document.addEventListener('keydown',e=>{if(e.key==='Enter'&&e.target&&(e.target.
 /* ---------- ações gerais ---------- */
 Object.assign(ACT,{
   tab:d=>{V.tab=d.t;V.stack=[];render();scrollTo(0,0)},
+  progTab:d=>{PROG=d.t;render()},
+  avTab:d=>{AVT=d.t;render()},
   back:()=>{const t=V.stack.pop();if(t&&t.params&&t.params.uid&&!V.stack.some(x=>x.params&&x.params.uid)&&MANAGE&&MANAGE.dirty)saveManaged();render()},
   go:d=>{if(d.v==='picker'){PK.q='';PK.cat=d.mode==='insert'?'Crossfit':'';PK.grp=''}go(d.v,{id:d.id,pid:d.pid,sid:d.sid,eid:d.eid,mode:d.mode,uid:d.uid||''})},
   openLog:d=>go('log',{id:d.id}),
