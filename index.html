@@ -139,7 +139,7 @@ body.nologin nav#tabs{display:none}
 .li .t>span{display:block}
 .chips{display:flex;gap:6px;overflow-x:auto;padding:2px 0 8px;scrollbar-width:none}.chips::-webkit-scrollbar{display:none}
 .chip{flex:none;background:var(--s2);border:1px solid var(--s3);color:var(--tx);border-radius:999px;padding:7px 12px;font-size:14px;font-family:inherit}
-.wz-o{display:flex;align-items:center;gap:12px;width:100%;min-height:72px;margin:8px 0;padding:12px 14px;border-radius:16px;background:var(--s1);border:1px solid var(--s3);color:var(--tx);text-align:left;font:inherit}.wz-o.on{border:2px solid var(--ac);background:rgba(31,107,255,.12)}.wz-o .t{flex:1;display:flex;flex-direction:column;gap:2px}.wz-ic{font-size:24px;width:40px;text-align:center}.wz-ck{width:24px;height:24px;border-radius:50%;display:grid;place-items:center;background:var(--ac);color:#fff;font-weight:700}.wz-o:not(.on) .wz-ck{background:transparent;border:2px solid var(--s3)}.wz-days .chip{min-width:52px;justify-content:center;font-size:18px;font-weight:700}
+.wz-o{display:flex;align-items:center;gap:12px;width:100%;min-height:72px;margin:8px 0;padding:12px 14px;border-radius:16px;background:var(--s1);border:1px solid var(--s3);color:var(--tx);text-align:left;font:inherit}.wz-o.on{border:2px solid var(--ac);background:rgba(31,107,255,.12)}.wz-o .t{flex:1;display:flex;flex-direction:column;gap:2px}.wz-ic{font-size:24px;width:40px;text-align:center}.wz-ck{width:24px;height:24px;border-radius:50%;display:grid;place-items:center;background:var(--ac);color:#fff;font-weight:700}.wz-o:not(.on) .wz-ck{background:transparent;border:2px solid var(--s3)}.wz-days{flex-wrap:wrap}.wz-days .chip{min-width:44px;justify-content:center;font-size:18px;font-weight:700}
 .fs-i{display:flex;gap:12px;padding:12px 0;border-top:1px solid var(--s3)}.fs-n{width:34px;height:34px;flex:none;border-radius:50%;display:grid;place-items:center;font-family:var(--fd);font-size:17px;background:var(--s2);color:var(--mu);border:1px solid var(--s3)}.fs-i.now .fs-n{background:var(--ac);color:#fff;border:0;box-shadow:var(--glow)}.fs-i.done .fs-n{background:var(--ok);color:#05070d;border:0}.fs-i.done b,.fs-i.next b{color:var(--mu)}
 .chip.on{background:var(--ac);border-color:var(--ac);color:#fff;font-weight:600}
 .kd{display:inline-grid;place-items:center;width:30px;height:30px;border-radius:9px;background:var(--s3);font-size:15px;flex:none}
@@ -527,7 +527,7 @@ function sessionsFromRaw(t,p){if(!t)return[];
     it.sets=sets;it.reps=reps;it.restSec=rest;it.rest=rest>=120?(rest/60)+' min':rest+' s';it.rir=it.kind==='time'||c.cat==='Core'?'':'RIR 2';return it}})}))}
 
 "use strict";
-const APP_VERSION='3.14.0';
+const APP_VERSION='3.14.1';
 /* ---------- tema (preferência do aparelho) ---------- */
 const THEME_KEY='treino.theme';const MQ_DARK=window.matchMedia?matchMedia('(prefers-color-scheme: dark)'):null;
 function themePref(){try{return localStorage.getItem(THEME_KEY)||'dark'}catch(e){return'dark'}}
@@ -1300,7 +1300,7 @@ let WZ=null;
 const WZ_GOAL_FROM={hipertrofia:'massa',recomposicao:'massa',emagrecimento:'gordura',condicionamento:'saude',saude:'saude',outro:'massa'};
 function wzPrefill(a){const w={step:1,goal:'massa',days:3,time:'60',place:'academia'};if(!a)return w;
   if(WZ_GOAL_FROM[a.goal])w.goal=WZ_GOAL_FROM[a.goal];const d=+a.train_days;if(d>=2)w.days=Math.min(6,d);if(a.train_place==='casa')w.place='casa';if(d===0&&a.goal!=='hipertrofia')w.goal='iniciante';return w}
-function wzModelId(w){if(w.days===5)return w.place==='casa'?'d4-casa':'d5-acad';const ini=w.goal==='iniciante'&&w.days<=4;return`d${w.days}-${w.place==='casa'?'casa':'acad'}${ini?'-ini':''}`}
+function wzModelId(w){if(w.days===7)return w.place==='casa'?'d6-casa':'d7-acad';if(w.days===5)return w.place==='casa'?'d4-casa':'d5-acad';const ini=w.goal==='iniciante'&&w.days<=4;return`d${w.days}-${w.place==='casa'?'casa':'acad'}${ini?'-ini':''}`}
 function wzBuild(w){const T=tplPlans(),tp=T.find(t=>t.tpl.id===wzModelId(w))||T.find(t=>t.tpl.id==='d3-acad');const G=MODELOS.GOALS[w.goal]||{};
   const p=planFromTpl(tp,`${({massa:'Hipertrofia',gordura:'Emagrecimento',saude:'Condicionamento',iniciante:'Iniciante'})[w.goal]||'Treino'} · ${w.days}×/semana · ${w.place==='casa'?'casa':'academia'}`,w.goal);
   if(w.time==='45')p.sessions.forEach(x=>{if(x.exercises.length>5)x.exercises=x.exercises.slice(0,5)});return p}
@@ -1313,11 +1313,11 @@ VIEWS.montar=function(prm){const uid=prm.uid||'';if(!WZ||WZ.uid!==uid||WZ.aid!==
   const chip=(k,v,t)=>`<button class="chip ${String(w[k])===String(v)?'on':''}" data-act="wzSet" data-k="${k}" data-v="${v}" aria-pressed="${String(w[k])===String(v)}">${t}</button>`;
   if(w.step===1){h+=`<h2 style="margin:0 0 4px">Qual é o objetivo${who?' do cliente':''}?</h2><p class="mu sm" style="margin-top:0">Escolha o que mais importa agora. Dá para mudar depois.</p>
     ${opt('goal','massa',G.massa.name,'Mais carga e volume ao longo das semanas.','💪')}${opt('goal','gordura',G.gordura.name,'Treino mais intenso, descanso curto e cardio leve no fim.','🔥')}${opt('goal','saude',G.saude.name,'Corpo todo, ritmo moderado, sem exagero.','❤️')}${opt('goal','iniciante',G.iniciante.name,'Máquinas e exercícios simples para aprender a técnica.','🌱')}
-    <div style="height:12px"></div><button class="btn pri block" data-act="wzNext">Continuar</button>`}
+    <div style="height:12px"></div><button class="btn pri block" data-act="wzNext">Continuar</button>${w.goal!=='iniciante'?`<div style="height:8px"></div><button class="btn ghost block" data-act="wzSkip">Já treino: quero montar sozinho</button>`:''}`}
   else if(w.step===2){h+=`<h2 style="margin:0 0 10px">Como é a rotina${who?' do cliente':''}?</h2>
-    <div class="b">Quantos dias por semana?</div><div class="chips wz-days">${[2,3,4,5,6].map(d=>chip('days',d,d)).join('')}</div>
+    <div class="b">Quantos dias por semana?</div><div class="chips wz-days">${[2,3,4,5,6,7].map(d=>chip('days',d,d)).join('')}</div>
     ${w.goal==='iniciante'&&w.days>=5?'<div class="sug down" style="margin-top:8px">Para quem está começando, 3 dias costumam render mais: dá tempo de recuperar. Você pode manter, se quiser.</div>':''}
-    ${w.days===5&&w.place==='casa'?'<div class="mu sm" style="margin-top:6px">Para 5 dias em casa, o app usa o modelo de 4 treinos; no 5º dia, recomece pelo primeiro.</div>':''}
+    ${w.days===5&&w.place==='casa'?'<div class="mu sm" style="margin-top:6px">Para 5 dias em casa, o app usa o modelo de 4 treinos; no 5º dia, recomece pelo primeiro.</div>':''}${w.days===7?'<div class="mu sm" style="margin-top:6px">'+(w.place==='casa'?'Para 7 dias em casa, o app usa o modelo de 6 treinos; no 7º dia, recomece pelo primeiro. ':'')+'Treinar todos os dias exige atenção ao descanso: se sentir cansaço acumulado, tire um dia de folga.</div>':''}
     <div class="b" style="margin-top:16px">Quanto tempo por treino?</div><div class="chips">${chip('time','45','45 min')}${chip('time','60','1 hora')}${chip('time','90','1h30')}</div>
     <div class="b" style="margin-top:16px">Onde treina?</div>${opt('place','academia','Academia','Máquinas, halteres e barras.','🏋️')}${opt('place','casa','Em casa','Peso do corpo, halteres e banco.','🏠')}
     <div style="height:12px"></div><button class="btn pri block" data-act="wzNext">Ver o treino</button>`}
@@ -1332,7 +1332,7 @@ function firstSteps(){const m=window.AV&&AV.mine?AV.mine():null,d1=!!(m&&m.list&
   const it=(n,t,d,st,btn)=>`<div class="fs-i ${st}"><span class="fs-n">${st==='done'?'✓':n}</span><div class="sp"><b>${t}</b><div class="mu sm">${d}</div>${btn||''}</div></div>`;
   return`<div class="card"><div class="row"><b class="sp">Seus primeiros passos</b><span class="ac sm b">${d1?1:0} de 3</span></div>
     ${it(1,'Responder a avaliação',d1?'Pronto! O resultado fica na aba Avaliação.':'Saúde, hábitos e objetivo. Leva uns 8 minutos.',d1?'done':'now',d1?'':'<button class="btn block" data-act="avNew" style="margin-top:8px">Responder agora</button>')}
-    ${it(2,'Montar meu treino','3 perguntas rápidas: objetivo, dias por semana e onde você treina.',d1?'now':'next','<button class="btn pri block" data-act="go" data-v="montar" style="margin-top:8px">Montar meu treino</button>')}
+    ${it(2,'Montar meu treino','3 perguntas rápidas: objetivo, dias por semana e onde você treina.',d1?'now':'next','<button class="btn pri block" data-act="go" data-v="montar" style="margin-top:8px">Montar meu treino</button><button class="btn ghost block" data-act="newPlan">Já treino: quero montar sozinho</button>')}
     ${it(3,'Fazer o primeiro treino','O app mostra cada exercício, as séries e conta o descanso para você.','next')}</div>
     ${ME.role!=='master'?'<div class="banner">ℹ️ Prefere que seu treinador monte? Ele monta pela conta dele e o treino aparece aqui sozinho.</div>':''}`}
 async function loadManage(uid,name){const{data,error}=await SB.from('user_docs').select('program').eq('user_id',uid).maybeSingle();if(error)throw new Error(friendlyErr(error));MANAGE={uid,name,lib:libFrom(data&&data.program)||emptyLib(),dirty:false}}
@@ -1626,6 +1626,7 @@ Object.assign(ACT,{
   tab:d=>{V.tab=d.t;V.stack=[];render();scrollTo(0,0)},
   progTab:d=>{PROG=d.t;render()},
   wzSet:d=>{WZ[d.k]=d.k==='days'?+d.v:d.v;WZ.preview=null;render()},
+  wzSkip:()=>{V.stack=V.stack.filter(x=>x.view!=='montar');WZ=null;render();ACT.newPlan()},
   wzNext:()=>{WZ.step++;WZ.preview=null;render();scrollTo(0,0)},
   wzForClient:async d=>{if(!navigator.onLine){toast('Precisa de internet');return}try{const u=USERS&&USERS.list&&USERS.list.find(x=>x.id===d.uid);await loadManage(d.uid,(u&&u.name)||d.name||'cliente');WZ=null;go('montar',{uid:d.uid,aid:d.aid})}catch(e){toast(e.message)}},
   wzCreate:d=>{const w=WZ;if(!w)return;const p=w.preview||wzBuild(w),lib=LIB(),uid=w.uid;lib.plans.push(p);lib.activeId=p.id;if(!uid)S.prog[p.id]={week:1};psave();WZ=null;
