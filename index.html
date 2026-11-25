@@ -139,6 +139,8 @@ body.nologin nav#tabs{display:none}
 .li .t>span{display:block}
 .chips{display:flex;gap:6px;overflow-x:auto;padding:2px 0 8px;scrollbar-width:none}.chips::-webkit-scrollbar{display:none}
 .chip{flex:none;background:var(--s2);border:1px solid var(--s3);color:var(--tx);border-radius:999px;padding:7px 12px;font-size:14px;font-family:inherit}
+.wz-o{display:flex;align-items:center;gap:12px;width:100%;min-height:72px;margin:8px 0;padding:12px 14px;border-radius:16px;background:var(--s1);border:1px solid var(--s3);color:var(--tx);text-align:left;font:inherit}.wz-o.on{border:2px solid var(--ac);background:rgba(31,107,255,.12)}.wz-o .t{flex:1;display:flex;flex-direction:column;gap:2px}.wz-ic{font-size:24px;width:40px;text-align:center}.wz-ck{width:24px;height:24px;border-radius:50%;display:grid;place-items:center;background:var(--ac);color:#fff;font-weight:700}.wz-o:not(.on) .wz-ck{background:transparent;border:2px solid var(--s3)}.wz-days .chip{min-width:52px;justify-content:center;font-size:18px;font-weight:700}
+.fs-i{display:flex;gap:12px;padding:12px 0;border-top:1px solid var(--s3)}.fs-n{width:34px;height:34px;flex:none;border-radius:50%;display:grid;place-items:center;font-family:var(--fd);font-size:17px;background:var(--s2);color:var(--mu);border:1px solid var(--s3)}.fs-i.now .fs-n{background:var(--ac);color:#fff;border:0;box-shadow:var(--glow)}.fs-i.done .fs-n{background:var(--ok);color:#05070d;border:0}.fs-i.done b,.fs-i.next b{color:var(--mu)}
 .chip.on{background:var(--ac);border-color:var(--ac);color:#fff;font-weight:600}
 .kd{display:inline-grid;place-items:center;width:30px;height:30px;border-radius:9px;background:var(--s3);font-size:15px;flex:none}
 .cf{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-top:8px}
@@ -525,7 +527,7 @@ function sessionsFromRaw(t,p){if(!t)return[];
     it.sets=sets;it.reps=reps;it.restSec=rest;it.rest=rest>=120?(rest/60)+' min':rest+' s';it.rir=it.kind==='time'||c.cat==='Core'?'':'RIR 2';return it}})}))}
 
 "use strict";
-const APP_VERSION='3.13.1';
+const APP_VERSION='3.14.0';
 /* ---------- tema (preferência do aparelho) ---------- */
 const THEME_KEY='treino.theme';const MQ_DARK=window.matchMedia?matchMedia('(prefers-color-scheme: dark)'):null;
 function themePref(){try{return localStorage.getItem(THEME_KEY)||'dark'}catch(e){return'dark'}}
@@ -743,7 +745,8 @@ VIEWS.hoje=function(){
   if(S.active)return viewWorkout();
   const p=myActive();
   let h=hdr('Hoje',(ME&&ME.name?'Olá, '+esc(ME.name.split(' ')[0])+' · ':'')+esc(new Date().toLocaleDateString('pt-BR',{weekday:'long',day:'numeric',month:'long'})),false,`<div class="row" style="gap:6px">${syncBadge()}<button class="ib" data-act="go" data-v="ajuda" aria-label="Ajuda">?</button></div>`);
-  if(!p||!p.sessions.length)return h+`<div class="card hero"><h2>${p?'Seu plano ainda não tem treinos':'Nenhum plano ativo'}</h2><p class="mu sm">Crie um plano (ou adicione treinos a ele) na aba <b>Treinos</b>.${ME.role!=='master'?' O master também pode montar para você — aparece aqui automaticamente.':''}</p><button class="btn pri block" data-act="tab" data-t="treinos">Ir para Treinos</button><div style="height:8px"></div><button class="btn block" data-act="syncNow">Atualizar</button></div>`;
+  if(!p)return h+firstSteps();
+  if(!p.sessions.length)return h+`<div class="card hero"><h2>${p?'Seu plano ainda não tem treinos':'Nenhum plano ativo'}</h2><p class="mu sm">Crie um plano (ou adicione treinos a ele) na aba <b>Treinos</b>.${ME.role!=='master'?' O master também pode montar para você — aparece aqui automaticamente.':''}</p><button class="btn pri block" data-act="tab" data-t="treinos">Ir para Treinos</button><div style="height:8px"></div><button class="btn block" data-act="syncNow">Atualizar</button></div>`;
   const pr=progOf(p),w=pr.week,N=weeksOf(p);
   if(w>N)return h+`<div class="card hero"><h2>${esc(p.name)} concluído 🎉</h2><p class="mu sm">Você completou as ${N} semanas. O que vem agora?</p><button class="btn pri block" data-act="repeatPlan">Repetir com cargas atualizadas</button><div style="height:8px"></div><button class="btn block" data-act="go" data-v="planos">Escolher outro plano</button></div>`;
   const ph=phaseAt(p,w),done=doneThisWeek(p),nx=nextSession(p),n=p.sessions.length;
@@ -752,6 +755,7 @@ VIEWS.hoje=function(){
     <div class="row sm" style="margin-top:12px"><span class="sp mu">Treinos da semana</span><b>${done.size} de ${n}</b></div>
     <div class="days" style="grid-template-columns:repeat(${Math.min(n,7)},1fr)">${p.sessions.map(s=>`<div class="tap ${done.has(s.id)?'done':''} ${nx&&s.id===nx.id?'today':''}" data-act="start" data-id="${s.id}"><b>${esc(s.name).replace(' ','<br>')}</b>${done.has(s.id)?'✓':(nx&&s.id===nx.id?'próximo':'&nbsp;')}</div>`).join('')}</div>
     ${done.size?`<div style="text-align:right;margin-top:6px"><button class="btn ghost smb" data-act="advWeek" style="color:var(--mu)">Encerrar semana ${w} ›</button></div>`:''}</div>`;
+  if(nx&&!S.logs.length)h+=`<div class="banner">👟 <b>Primeiro treino?</b> Toque em <b>Iniciar treino</b>. O app mostra cada exercício, você marca as séries e ele conta o descanso.</div>`;
   if(nx){h+=`<h3>Próximo treino</h3><div class="card hero"><div class="row"><div class="sp"><h2>${esc(nx.name)}</h2><div class="mu sm">${esc(nx.groups||'')}</div></div>${nx.duration?`<span class="pill">${esc(nx.duration)}</span>`:''}</div>
       <ul class="exl">${nx.exercises.map(e=>{const[a,b]=itemTarget(e,p,w);return`<li><span>${KIND_ICON[e.kind]||''} ${esc(e.name)} <span class="mu sm">${a}</span></span><span>${b}</span></li>`}).join('')}</ul>
       ${nx.notes?`<div class="mu sm" style="margin-top:8px">📌 ${esc(nx.notes)}</div>`:''}${nx.cardio?`<div class="mu sm" style="margin-top:4px">🏃 ${esc(nx.cardio)}</div>`:''}
@@ -865,7 +869,7 @@ VIEWS.planos=function(){const lib=LIB(),u=U(),own=!u;
   const nxt=others.filter(p=>!isDone(p)),fin=others.filter(isDone);
   h+=`<h3>Próximos</h3>${nxt.length?`<div class="card" style="padding:4px 14px">${nxt.map(row).join('')}</div>`:'<div class="card mu sm">Nenhum plano aguardando. Crie um novo para deixar na fila.</div>'}`;
   if(fin.length)h+=`<h3>Finalizados</h3><div class="card" style="padding:4px 14px">${fin.map(row).join('')}</div>`;
-  h+=`<div style="height:12px"></div><button class="btn pri block" data-act="newPlan" ${ua()}>+ Novo plano</button>`;
+  h+=`<div style="height:12px"></div><button class="btn pri block" data-act="go" data-v="montar" ${ua()}>Montar em 3 perguntas</button><div style="height:8px"></div><button class="btn block" data-act="newPlan" ${ua()}>+ Novo plano (avançado)</button>`;
   return h};
 VIEWS.plan=function({id}){const p=planById(id);if(!p)return hdr('Plano','',true)+'<div class="empty">Não encontrado</div>';
   const lib=LIB(),own=!U(),isAct=lib.activeId===p.id,N=weeksOf(p),w=own?progOf(p).week:0;
@@ -1291,6 +1295,47 @@ VIEWS.modelos=function(){if(ME.role!=='master')return hdr('Modelos de treino',''
   for(const pl of [['academia','🏋️ Academia'],['casa','🏠 Casa']]){const g=L.filter(p=>p.tpl.place===pl[0]);if(!g.length)continue;
     h+=`<h3>${pl[1]}</h3><div class="card" style="padding:4px 14px">${g.map(p=>`<div class="li tap" data-act="go" data-v="plan" data-id="${p.id}" data-uid="__tpl"><span class="pill" style="min-width:34px;text-align:center">${p.tpl.days}d</span><div class="t"><b>${esc(p.name)}</b><span class="mu sm">${p.sessions.length} treinos${p.tpl.level==='iniciante'?' · iniciante':''}${p.tpl.custom?' · <span class="ac">editado</span>':''}</span></div><span class="mu">›</span></div>`).join('')}</div>`}
   return h};
+/* ---------- MONTAR TREINO EM 3 PERGUNTAS ---------- */
+let WZ=null;
+const WZ_GOAL_FROM={hipertrofia:'massa',recomposicao:'massa',emagrecimento:'gordura',condicionamento:'saude',saude:'saude',outro:'massa'};
+function wzPrefill(a){const w={step:1,goal:'massa',days:3,time:'60',place:'academia'};if(!a)return w;
+  if(WZ_GOAL_FROM[a.goal])w.goal=WZ_GOAL_FROM[a.goal];const d=+a.train_days;if(d>=2)w.days=Math.min(6,d);if(a.train_place==='casa')w.place='casa';if(d===0&&a.goal!=='hipertrofia')w.goal='iniciante';return w}
+function wzModelId(w){if(w.days===5)return w.place==='casa'?'d4-casa':'d5-acad';const ini=w.goal==='iniciante'&&w.days<=4;return`d${w.days}-${w.place==='casa'?'casa':'acad'}${ini?'-ini':''}`}
+function wzBuild(w){const T=tplPlans(),tp=T.find(t=>t.tpl.id===wzModelId(w))||T.find(t=>t.tpl.id==='d3-acad');const G=MODELOS.GOALS[w.goal]||{};
+  const p=planFromTpl(tp,`${({massa:'Hipertrofia',gordura:'Emagrecimento',saude:'Condicionamento',iniciante:'Iniciante'})[w.goal]||'Treino'} · ${w.days}×/semana · ${w.place==='casa'?'casa':'academia'}`,w.goal);
+  if(w.time==='45')p.sessions.forEach(x=>{if(x.exercises.length>5)x.exercises=x.exercises.slice(0,5)});return p}
+VIEWS.montar=function(prm){const uid=prm.uid||'';if(!WZ||WZ.uid!==uid||WZ.aid!==(prm.aid||'')){let a=null;if(prm.aid&&window.AV&&AV.cache.det[prm.aid])a=AV.cache.det[prm.aid].answers;else if(!uid&&window.AV&&AV.cache.mine&&AV.cache.mine.list&&AV.cache.mine.list[0])a=AV.cache.mine.list[0].answers;WZ=Object.assign(wzPrefill(a),{uid,aid:prm.aid||'',pref:!!a})}
+  const w=WZ,G=(window.MODELOS&&MODELOS.GOALS)||{},who=uid?whoName():'';
+  const bar=`<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin:4px 0 14px">${[1,2,3].map(i=>`<div style="height:6px;border-radius:3px;background:${i<=w.step?'var(--ac)':'var(--s3)'}"></div>`).join('')}</div>`;
+  let h=hdr(w.step===3?'Treino montado':'Montar treino',(who?'para '+esc(who)+' · ':'')+'passo '+w.step+' de 3',true)+bar;
+  if(w.pref&&w.step===1)h+=`<div class="banner">📋 Respostas pré-preenchidas com a avaliação${who?' do cliente':''}. Confira e ajuste.</div>`;
+  const opt=(k,v,t,d,ic)=>`<button class="wz-o ${w[k]===v?'on':''}" data-act="wzSet" data-k="${k}" data-v="${v}" aria-pressed="${w[k]===v}"><span class="wz-ic">${ic}</span><span class="t"><b>${t}</b>${d?`<span class="mu sm">${d}</span>`:''}</span><span class="wz-ck">${w[k]===v?'✓':''}</span></button>`;
+  const chip=(k,v,t)=>`<button class="chip ${String(w[k])===String(v)?'on':''}" data-act="wzSet" data-k="${k}" data-v="${v}" aria-pressed="${String(w[k])===String(v)}">${t}</button>`;
+  if(w.step===1){h+=`<h2 style="margin:0 0 4px">Qual é o objetivo${who?' do cliente':''}?</h2><p class="mu sm" style="margin-top:0">Escolha o que mais importa agora. Dá para mudar depois.</p>
+    ${opt('goal','massa',G.massa.name,'Mais carga e volume ao longo das semanas.','💪')}${opt('goal','gordura',G.gordura.name,'Treino mais intenso, descanso curto e cardio leve no fim.','🔥')}${opt('goal','saude',G.saude.name,'Corpo todo, ritmo moderado, sem exagero.','❤️')}${opt('goal','iniciante',G.iniciante.name,'Máquinas e exercícios simples para aprender a técnica.','🌱')}
+    <div style="height:12px"></div><button class="btn pri block" data-act="wzNext">Continuar</button>`}
+  else if(w.step===2){h+=`<h2 style="margin:0 0 10px">Como é a rotina${who?' do cliente':''}?</h2>
+    <div class="b">Quantos dias por semana?</div><div class="chips wz-days">${[2,3,4,5,6].map(d=>chip('days',d,d)).join('')}</div>
+    ${w.goal==='iniciante'&&w.days>=5?'<div class="sug down" style="margin-top:8px">Para quem está começando, 3 dias costumam render mais: dá tempo de recuperar. Você pode manter, se quiser.</div>':''}
+    ${w.days===5&&w.place==='casa'?'<div class="mu sm" style="margin-top:6px">Para 5 dias em casa, o app usa o modelo de 4 treinos; no 5º dia, recomece pelo primeiro.</div>':''}
+    <div class="b" style="margin-top:16px">Quanto tempo por treino?</div><div class="chips">${chip('time','45','45 min')}${chip('time','60','1 hora')}${chip('time','90','1h30')}</div>
+    <div class="b" style="margin-top:16px">Onde treina?</div>${opt('place','academia','Academia','Máquinas, halteres e barras.','🏋️')}${opt('place','casa','Em casa','Peso do corpo, halteres e banco.','🏠')}
+    <div style="height:12px"></div><button class="btn pri block" data-act="wzNext">Ver o treino</button>`}
+  else{if(!w.preview)w.preview=wzBuild(w);const p=w.preview,lib=LIB(),cur=planById(lib.activeId,lib);
+    h+=`<div class="chips" style="margin-bottom:10px"><span class="pill">${esc((G[w.goal]||{}).name||'')}</span><span class="pill">${w.days}×/semana</span><span class="pill">${w.time==='45'?'45 min':w.time==='90'?'1h30':'1 hora'}</span><span class="pill">${w.place==='casa'?'Casa':'Academia'}</span></div>
+    <div class="card" style="padding:4px 14px">${p.sessions.map((x,i)=>`<div class="li"><span class="pill" style="min-width:30px;text-align:center">${String.fromCharCode(65+i)}</span><div class="t"><b>${esc(x.name)}</b><span class="mu sm">${x.exercises.length} exercícios · ${esc(x.duration||'')}</span><span class="mu xs">${x.exercises.map(e=>esc(e.name)).join(' · ')}</span></div></div>`).join('')}</div>
+    <div class="banner">ℹ️ Faça os treinos na ordem${p.sessions.length>1?' ('+p.sessions.map((x,i)=>String.fromCharCode(65+i)).join(', ')+')':''} e repita. Na primeira vez use uma carga confortável: o app anota e avisa quando aumentar.</div>
+    ${cur?`<p class="mu sm">O plano atual <b>${esc(cur.name)}</b> vai para <b>Próximos</b> e fica guardado.</p>`:''}
+    <button class="btn pri block" data-act="wzCreate" data-then="hoje">${uid?'Salvar e ativar para o cliente':'Começar a usar'}</button><div style="height:8px"></div><button class="btn block" data-act="wzCreate" data-then="edit">${uid?'Salvar e ajustar exercícios':'Trocar algum exercício'}</button>`}
+  return h};
+function firstSteps(){const m=window.AV&&AV.mine?AV.mine():null,d1=!!(m&&m.list&&m.list.length);
+  const it=(n,t,d,st,btn)=>`<div class="fs-i ${st}"><span class="fs-n">${st==='done'?'✓':n}</span><div class="sp"><b>${t}</b><div class="mu sm">${d}</div>${btn||''}</div></div>`;
+  return`<div class="card"><div class="row"><b class="sp">Seus primeiros passos</b><span class="ac sm b">${d1?1:0} de 3</span></div>
+    ${it(1,'Responder a avaliação',d1?'Pronto! O resultado fica na aba Avaliação.':'Saúde, hábitos e objetivo. Leva uns 8 minutos.',d1?'done':'now',d1?'':'<button class="btn block" data-act="avNew" style="margin-top:8px">Responder agora</button>')}
+    ${it(2,'Montar meu treino','3 perguntas rápidas: objetivo, dias por semana e onde você treina.',d1?'now':'next','<button class="btn pri block" data-act="go" data-v="montar" style="margin-top:8px">Montar meu treino</button>')}
+    ${it(3,'Fazer o primeiro treino','O app mostra cada exercício, as séries e conta o descanso para você.','next')}</div>
+    ${ME.role!=='master'?'<div class="banner">ℹ️ Prefere que seu treinador monte? Ele monta pela conta dele e o treino aparece aqui sozinho.</div>':''}`}
+async function loadManage(uid,name){const{data,error}=await SB.from('user_docs').select('program').eq('user_id',uid).maybeSingle();if(error)throw new Error(friendlyErr(error));MANAGE={uid,name,lib:libFrom(data&&data.program)||emptyLib(),dirty:false}}
 function ADV(){return!!(S&&S.settings&&S.settings.adv)}
 let PROG='evo';
 function progSeg(t){return`<div class="seg" style="margin-bottom:10px">${[['evo','📈 Evolução'],['hist','🕒 Histórico']].map(([k,l])=>`<button class="${t===k?'on':''}" data-act="progTab" data-t="${k}">${l}</button>`).join('')}</div>`}
@@ -1298,7 +1343,7 @@ VIEWS.progresso=function(){return PROG==='hist'?VIEWS.historico():VIEWS.evolucao
 VIEWS.perfil=function(){return VIEWS.ajustes()};
 VIEWS.treinos=function(){const p=myActive();
   let h=hdr('Treinos','Toque em um treino para ver ou trocar exercícios',false,syncBadge());
-  if(!p)return h+`<div class="card hero"><h2>Você ainda não tem um treino</h2><p class="mu sm">Crie um plano a partir de um modelo pronto ou em branco.${ME.role!=='master'?' Seu treinador também pode montar para você.':''}</p><button class="btn pri block" data-act="newPlan">+ Criar meu plano</button><div style="height:8px"></div><button class="btn block" data-act="go" data-v="planos">Ver meus planos</button></div>`;
+  if(!p)return h+`<div class="card hero"><h2>Você ainda não tem um treino</h2><p class="mu sm">Responda 3 perguntas e o app monta o seu treino. Ou crie do zero, se preferir.${ME.role!=='master'?' Seu treinador também pode montar para você.':''}</p><button class="btn pri block" data-act="go" data-v="montar">Montar meu treino</button><div style="height:8px"></div><button class="btn block" data-act="newPlan">Criar do zero</button><div style="height:8px"></div><button class="btn ghost block" data-act="go" data-v="planos">Ver meus planos</button></div>`;
   const w=progOf(p).week,N=weeksOf(p),done=doneThisWeek(p),nx=nextSession(p);
   h+=`<div class="card"><div class="row"><div class="sp"><div class="mu xs b">MEU TREINO ATUAL</div><div class="b" style="font-size:18px">${esc(p.name)}</div><div class="mu sm">${w>N?'Concluído':'Semana '+w+' de '+N} · ${p.sessions.length} treino${p.sessions.length===1?'':'s'} por semana</div></div>${w<=N?phPill(p,w):''}</div>${weekbar(p,w)}
     <div style="margin-top:6px">${p.sessions.map((x,i)=>`<div class="li tap" data-act="go" data-v="session" data-id="${x.id}" data-pid="${p.id}"><span class="pill" style="min-width:30px;text-align:center">${String.fromCharCode(65+i)}</span><div class="t"><b>${esc(x.name)}</b><span class="mu sm">${x.exercises.length} exercício${x.exercises.length===1?'':'s'}${x.groups?' · '+esc(x.groups):''}</span></div>${done.has(x.id)?'<span class="ok sm b">feito ✓</span>':nx&&nx.id===x.id?'<span class="pill" style="background:var(--ac);color:#fff">próximo</span>':''}<span class="mu">›</span></div>`).join('')||'<div class="li mu sm">Nenhum treino ainda.</div>'}</div></div>
@@ -1384,7 +1429,8 @@ VIEWS.ajuda=function(){
     helpRow('<b>Encerrar semana ›</b>','Encerrar semana','Avança para a próxima semana mesmo sem fazer todos os treinos.')+
     helpRow('💾','Salvamento automático','Tudo o que você digita é salvo na hora. Se fechar o app no meio, o treino continua de onde parou.'));
   h+=sec('📅 Planos',
-    helpRow('<b>+ Novo plano</b>','Novo plano','Escolha nome, periodização e os treinos: em branco, um modelo pronto ou cópia de outro plano.')+
+    helpRow('<b>Montar treino</b>','Montar em 3 perguntas','Escolha objetivo, dias por semana, tempo e local: o app monta os treinos a partir dos modelos prontos. Depois você troca exercícios, séries e cargas à vontade. O master também monta para o cliente direto da avaliação dele.')+
+    helpRow('<b>+ Novo plano</b>','Novo plano (avançado)','Escolha nome, objetivo, periodização e os treinos: em branco, um modelo pronto ou cópia de outro plano.')+
     helpRow('<b>Tornar ativo</b>','Tornar ativo','Define qual plano aparece em Hoje. Só um plano fica ativo por vez.')+
     helpRow('<b>Editar periodização</b>','Periodização','Fases, semanas, RIR alvo e como a carga evolui: <b>subir carga</b> (kg por semana), <b>subir %</b>, <b>manter</b> ou <b>deload</b> (% do pico, para recuperar).')+
     helpRow('<b>Gerar progressão</b>','Gerar progressão','Recalcula as cargas de todas as semanas a partir da carga base, seguindo a periodização. "Regerar de todos" faz isso em todos os exercícios.')+
@@ -1579,9 +1625,17 @@ document.addEventListener('keydown',e=>{if(e.key==='Enter'&&e.target&&(e.target.
 Object.assign(ACT,{
   tab:d=>{V.tab=d.t;V.stack=[];render();scrollTo(0,0)},
   progTab:d=>{PROG=d.t;render()},
+  wzSet:d=>{WZ[d.k]=d.k==='days'?+d.v:d.v;WZ.preview=null;render()},
+  wzNext:()=>{WZ.step++;WZ.preview=null;render();scrollTo(0,0)},
+  wzForClient:async d=>{if(!navigator.onLine){toast('Precisa de internet');return}try{const u=USERS&&USERS.list&&USERS.list.find(x=>x.id===d.uid);await loadManage(d.uid,(u&&u.name)||d.name||'cliente');WZ=null;go('montar',{uid:d.uid,aid:d.aid})}catch(e){toast(e.message)}},
+  wzCreate:d=>{const w=WZ;if(!w)return;const p=w.preview||wzBuild(w),lib=LIB(),uid=w.uid;lib.plans.push(p);lib.activeId=p.id;if(!uid)S.prog[p.id]={week:1};psave();WZ=null;
+    toast(uid?'Treino salvo e ativado para '+whoName():'Treino pronto!');
+    if(uid){V.stack=V.stack.filter(x=>x.view!=='montar');go('plan',{id:p.id,uid});return}
+    V.stack=[];V.tab=d.then==='edit'?'treinos':'hoje';render();scrollTo(0,0)},
   tplReset:d=>{const p=planById(d.pid,TPL.lib);if(!p)return;confirmBox('Restaurar modelo',`<p>Voltar <b>${esc(p.name)}</b> para a versão original do app? As suas alterações neste modelo serão perdidas. Planos já criados não mudam.</p>`,'Restaurar',async()=>{const{error}=await SB.from('workout_templates').delete().eq('id',p.tpl.id);if(error){toast(friendlyErr(error));return}delete TPL.rows[p.tpl.id];TPL.rebuild=true;tplPlans();toast('Modelo restaurado');render()})},
   avTab:d=>{AVT=d.t;render()},
-  back:()=>{const t=V.stack.pop();if(t&&t.params&&t.params.uid&&!V.stack.some(x=>x.params&&x.params.uid)&&MANAGE&&MANAGE.dirty)saveManaged();render()},
+  back:d=>{const t=topV();if(t&&t.view==='montar'&&WZ&&WZ.step>1){WZ.step--;WZ.preview=null;render();return}ACT._back(d)},
+  _back:()=>{const t=V.stack.pop();if(t&&t.params&&t.params.uid&&!V.stack.some(x=>x.params&&x.params.uid)&&MANAGE&&MANAGE.dirty)saveManaged();render()},
   go:d=>{if(d.v==='picker'){PK.q='';PK.cat=d.mode==='insert'?'Crossfit':'';PK.grp=''}go(d.v,{id:d.id,pid:d.pid,sid:d.sid,eid:d.eid,mode:d.mode,uid:d.uid||''})},
   openLog:d=>go('log',{id:d.id}),
   start:d=>{if(S.active){if(S.active.sessionId===d.id){V.tab='hoje';V.stack=[];render();return}confirmBox('Treino em andamento',`Você tem <b>${esc(S.active.name)}</b> em andamento. Descartar e iniciar outro?`,'Descartar e iniciar',()=>{S.active=null;startWorkout(d.id)},true);return}startWorkout(d.id)},
