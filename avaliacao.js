@@ -593,7 +593,7 @@ html[data-theme=light] .av-q{box-shadow:0 1px 2px rgba(16,24,40,.06)}
       const r = error ? { err: friendlyErr(error) } : { list: data || [] };
       (data || []).forEach(x => { AV.cache.det[x.id] = x; });
       if (key === 'mine') AV.cache.mine = r; else AV.cache.byUser[uid] = r;
-      const t = topV(); if (t && ME) render();
+      if (ME) render();
     });
     return slot;
   }
@@ -625,6 +625,7 @@ html[data-theme=light] .av-q{box-shadow:0 1px 2px rgba(16,24,40,.06)}
     if (!row) { SB.from('assessments').select(COLS).eq('id', id).maybeSingle().then(({ data }) => { if (data) { AV.cache.det[id] = data; render(); } else { toast('Avaliação não encontrada'); } }); return hdr('Avaliação', '', true) + '<div class="empty">Carregando…</div>'; }
     const mine = row.user_id === ME.id, isM = ME.role === 'master';
     let h = hdr('Avaliação', esc(new Date(row.created_at).toLocaleDateString('pt-BR')) + (isM && !mine ? ' · ' + esc((USERS && USERS.list && (USERS.list.find(u => u.id === row.user_id) || {}).name) || 'cliente') : ''), true);
+    if (isM && !mine) h += `<button class="btn pri block" data-act="wzForClient" data-uid="${row.user_id}" data-aid="${row.id}" style="margin-bottom:10px">🏋️ Montar treino a partir desta avaliação</button>`;
     h += resultHtml(row) + photosHtml(row, mine || isM) + answersHtml(row);
     h += `<p class="mu xs">Consentimento registrado em ${esc(new Date(row.consent_at).toLocaleString('pt-BR'))} (termo ${esc(row.consent_version)}).</p>`;
     h += `<div style="height:8px"></div><button class="btn block" data-act="avDelOne" data-id="${row.id}" style="color:var(--bad)">Excluir esta avaliação</button>`;
@@ -732,6 +733,7 @@ html[data-theme=light] .av-q{box-shadow:0 1px 2px rgba(16,24,40,.06)}
     }
   }
 
+  AV.mine = () => (ME && SB ? loadList('mine', ME.id) : null);
   AV.install = install; AV.takeover = takeover; AV.analyze = analyze; AV.SECTIONS = SECTIONS; AV.PARQ = PARQ; AV.collect = collect;
   if (typeof window !== 'undefined') window.AV = AV;
   if (typeof module !== 'undefined' && module.exports) module.exports = AV;
