@@ -187,6 +187,7 @@ html[data-theme=light] .ch [stroke="#1f6bff"]{stroke:var(--ac)}html[data-theme=l
 <input type="file" id="importFile" accept="application/json,.json" hidden>
 <script src="supabase.min.js"></script>
 <script src="avaliacao.js"></script>
+<script src="modelos.js"></script>
 <script>
 /* ===== Banco de exercícios =====  Nome|categoria|grupo|equipamento|tipo
    categoria: M=Musculação C=Cardio K=Core X=Crossfit · tipo: L=carga×reps B=peso corporal T=tempo A=cardio W=WOD */
@@ -517,13 +518,14 @@ const WORKOUT_TEMPLATES={
       ['Levantamento Terra Romeno (Stiff)',3,'10',90],['Rosca Direta com Barra',3,'12',60],['Tríceps Pulley (corda)',3,'12',60],['Abdominal na Máquina',3,'15',45]]},
   ]},
 };
-function sessionsFromTemplate(key,p){const t=WORKOUT_TEMPLATES[key];if(!t)return[];
+function sessionsFromTemplate(key,p){return sessionsFromRaw(WORKOUT_TEMPLATES[key],p)}
+function sessionsFromRaw(t,p){if(!t)return[];
   return t.sessions.map(s=>({id:uid36('s'),name:s.name,groups:s.groups,duration:s.duration,notes:s.notes||'',cardio:s.cardio||'',exercises:s.ex.map(x=>{if(!Array.isArray(x)){const c=CATALOG.find(k=>k.name===x.c);if(!c)throw new Error('Exercício não encontrado no banco: '+x.c);const it=makeItem(c,p);Object.assign(it,{name:x.n,sets:x.sets,reps:x.reps,rir:x.rir,rest:x.rest,restSec:x.restSec,inc:x.inc,why:x.why});return it}const[n,sets,reps,rest]=x;{
     const c=CATALOG.find(x=>x.name===n);if(!c)throw new Error('Exercício não encontrado no banco: '+n);const it=makeItem(c,p);
     it.sets=sets;it.reps=reps;it.restSec=rest;it.rest=rest>=120?(rest/60)+' min':rest+' s';it.rir=it.kind==='time'||c.cat==='Core'?'':'RIR 2';return it}})}))}
 
 "use strict";
-const APP_VERSION='3.12.0';
+const APP_VERSION='3.13.0';
 /* ---------- tema (preferência do aparelho) ---------- */
 const THEME_KEY='treino.theme';const MQ_DARK=window.matchMedia?matchMedia('(prefers-color-scheme: dark)'):null;
 function themePref(){try{return localStorage.getItem(THEME_KEY)||'dark'}catch(e){return'dark'}}
@@ -722,7 +724,7 @@ function sel(name,opts,cur,attrs){return`<select ${attrs||''}>${opts.map(([v,l])
 const V={tab:'hoje',stack:[]};
 function go(view,params){V.stack.push({view,params:params||{}});render();scrollTo(0,0)}
 function topV(){return V.stack[V.stack.length-1]}
-function setCtx(){const t=topV(),u=t&&t.params&&t.params.uid;CTX=(u&&MANAGE&&MANAGE.uid===u)?{lib:MANAGE.lib,uid:u}:{lib:null,uid:''}}
+function setCtx(){const t=topV(),u=t&&t.params&&t.params.uid;if(u==='__tpl'&&ME&&ME.role==='master'){tplPlans();CTX={lib:TPL.lib,uid:u,tpl:true};return}CTX=(u&&MANAGE&&MANAGE.uid===u)?{lib:MANAGE.lib,uid:u}:{lib:null,uid:''}}
 function render(){const pv=window.AV&&AV.takeover();if(pv){$('#app').innerHTML=pv;return}document.body.classList.toggle('nologin',!ME);if(!ME){$('#app').innerHTML=viewLogin();return}if(ME.active===false){$('#app').innerHTML=viewDisabled();return}
   setCtx();const t=topV();let h;try{h=t?VIEWS[t.view](t.params):VIEWS[V.tab]()}catch(e){console.error(e);h=`<div class="card">Erro: ${esc(e.message)}</div>`}
   $('#app').innerHTML=h;document.querySelectorAll('nav button').forEach(b=>b.classList.toggle('on',b.dataset.t===V.tab))}
@@ -849,7 +851,7 @@ function finishWorkout(){const A=S.active;
 /* ---------- PLANOS ---------- */
 function U(){return CTX.uid||''}
 function ua(){return`data-uid="${U()}"`}
-function whoName(){return CTX.uid&&MANAGE?MANAGE.name:''}
+function whoName(){return CTX.tpl?'Modelos':CTX.uid&&MANAGE?MANAGE.name:''}
 VIEWS.planos=function(){const lib=LIB(),u=U(),own=!u;
   let h=u?hdr('Planos de '+esc(whoName()),'Alterações são salvas na conta dele automaticamente',true):hdr('Planos de treino','Em andamento, próximos e finalizados',!!topV(),syncBadge());
   if(u)h+=`<div class="banner">✏️ Você está editando os planos de <b>${esc(whoName())}</b>.</div>`;
@@ -867,13 +869,14 @@ VIEWS.planos=function(){const lib=LIB(),u=U(),own=!u;
   return h};
 VIEWS.plan=function({id}){const p=planById(id);if(!p)return hdr('Plano','',true)+'<div class="empty">Não encontrado</div>';
   const lib=LIB(),own=!U(),isAct=lib.activeId===p.id,N=weeksOf(p),w=own?progOf(p).week:0;
-  let h=hdr(p.name,`${N} semanas · ${p.sessions.length} treinos/semana${isAct?' · <b class="ok">ativo</b>':''}`,true);
-  h+=`<div class="row wrap" style="margin-bottom:6px">${isAct?'':`<button class="btn pri smb" data-act="activatePlan" data-pid="${p.id}" ${ua()}>Tornar ativo</button>`}<button class="btn smb" data-act="dupPlan" data-pid="${p.id}" ${ua()}>Duplicar</button><button class="btn smb" data-act="delPlan" data-pid="${p.id}" ${ua()} style="color:var(--bad)">Excluir</button></div>`;
+  let h=hdr(p.name,p.tpl?`Modelo · ${tplLabel(p)}`:`${N} semanas · ${p.sessions.length} treinos/semana${isAct?' · <b class="ok">ativo</b>':''}`,true);
+  const isTpl=!!CTX.tpl;if(isTpl)h+=`<div class="banner">🧩 <b>Modelo pronto.</b> As mudanças valem para os próximos planos criados a partir dele; planos já criados não mudam.${p.tpl&&p.tpl.custom?' <button class="btn ghost smb" data-act="tplReset" data-pid="'+p.id+'">Restaurar original</button>':''}</div>`;
+  if(!isTpl)h+=`<div class="row wrap" style="margin-bottom:6px">${isAct?'':`<button class="btn pri smb" data-act="activatePlan" data-pid="${p.id}" ${ua()}>Tornar ativo</button>`}<button class="btn smb" data-act="dupPlan" data-pid="${p.id}" ${ua()}>Duplicar</button><button class="btn smb" data-act="delPlan" data-pid="${p.id}" ${ua()} style="color:var(--bad)">Excluir</button></div>`;
   h+=`<div class="card"><label class="f" style="margin-top:0"><span>Nome do plano</span><input data-plf="name" data-pid="${p.id}" value="${esc(p.name)}"></label>
-    <div class="sw"><span>Repetir automaticamente ao terminar<div class="mu xs">Bom para planos de manutenção contínua</div></span><input type="checkbox" data-plf="repeat" data-pid="${p.id}" ${p.repeat?'checked':''}></div></div>`;
+    ${p.tpl?'':`<div class="sw"><span>Repetir automaticamente ao terminar<div class="mu xs">Bom para planos de manutenção contínua</div></span><input type="checkbox" data-plf="repeat" data-pid="${p.id}" ${p.repeat?'checked':''}></div>`}</div>`;
   h+=`<h3>Treinos da semana (sequência)</h3><p class="mu sm" style="margin:-4px 0 0">A semana avança quando todos forem feitos. Para treinar 3×/semana, deixe 3 treinos.</p><div class="card" style="padding:4px 14px">${p.sessions.length?'':'<div class="li mu sm">Nenhum treino ainda.</div>'}${p.sessions.map((s,i,a)=>`<div class="li"><span class="pill" style="min-width:30px;text-align:center">${i+1}</span><div class="t tap" data-act="go" data-v="session" data-id="${s.id}" data-pid="${p.id}" ${ua()}><b>${esc(s.name)}</b><span class="mu sm">${esc(s.groups||'')}${s.groups?' · ':''}${s.exercises.length} exerc.</span></div><button class="ib" data-act="moveSess" data-pid="${p.id}" data-i="${i}" data-d="-1" ${i?'':'disabled style="opacity:.3"'}>↑</button><button class="ib" data-act="moveSess" data-pid="${p.id}" data-i="${i}" data-d="1" ${i<a.length-1?'':'disabled style="opacity:.3"'}>↓</button></div>`).join('')}</div>
     <button class="btn block" data-act="addSess" data-pid="${p.id}" ${ua()}>+ Adicionar treino</button>`;
-  if(!ADV())h+=`<details style="margin-top:14px"><summary>⚙️ Opções avançadas: fases e progressão de cargas</summary>`;let k=0;h+=`<h3>Periodização — ${N} semanas</h3><div class="card" style="padding:8px 10px"><table><tr><th>Sem</th><th>Fase</th><th>RIR</th><th>Séries</th></tr>${p.phases.map(ph=>Array.from({length:ph.weeks},()=>{k++;return`<tr class="pc-${esc(ph.color)} ${k===w?'cur':''}"><td><b>${k}</b></td><td><span class="ph-dot"></span>${esc(ph.name)}${weekFocus(p,k)?`<div class="mu xs">${esc(weekFocus(p,k))}</div>`:''}</td><td>${esc(ph.rir||'—')}</td><td>${Math.round((+ph.vol||1)*100)}%</td></tr>`}).join('')).join('')}</table>
+  if(isTpl)return h;if(!ADV())h+=`<details style="margin-top:14px"><summary>⚙️ Opções avançadas: fases e progressão de cargas</summary>`;let k=0;h+=`<h3>Periodização — ${N} semanas</h3><div class="card" style="padding:8px 10px"><table><tr><th>Sem</th><th>Fase</th><th>RIR</th><th>Séries</th></tr>${p.phases.map(ph=>Array.from({length:ph.weeks},()=>{k++;return`<tr class="pc-${esc(ph.color)} ${k===w?'cur':''}"><td><b>${k}</b></td><td><span class="ph-dot"></span>${esc(ph.name)}${weekFocus(p,k)?`<div class="mu xs">${esc(weekFocus(p,k))}</div>`:''}</td><td>${esc(ph.rir||'—')}</td><td>${Math.round((+ph.vol||1)*100)}%</td></tr>`}).join('')).join('')}</table>
     <div style="height:8px"></div><button class="btn block" data-act="go" data-v="phases" data-id="${p.id}" ${ua()}>Editar periodização</button></div>`;
   h+=`<h3>Progressão de cargas</h3><div class="card"><p class="sm mu" style="margin-top:0">O gerador recalcula as cargas de todas as semanas a partir da <b>carga-base</b> de cada exercício, seguindo as regras de cada fase.</p><button class="btn block" data-act="genAll" data-pid="${p.id}" ${ua()}>Regerar progressão de todos</button>
     ${own&&isAct?`<div style="height:8px"></div><button class="btn block" data-act="repeatPlan">Novo ciclo com cargas atualizadas</button>`:''}</div>`;
@@ -937,17 +940,19 @@ VIEWS.picker=function(prm){const cats=['','Musculação','Cardio','Core','Crossf
 function refreshPicker(){const el=$('#pkList');if(el)el.innerHTML=pkList(JSON.parse(el.dataset.prm))}
 
 /* ---------- salvar (minha conta ou de outro usuário) ---------- */
-function psave(){if(CTX.lib&&MANAGE&&CTX.lib===MANAGE.lib){MANAGE.dirty=true;clearTimeout(mT);mT=setTimeout(saveManaged,700)}else save()}
+function psave(){if(CTX.tpl){tplSave();return}if(CTX.lib&&MANAGE&&CTX.lib===MANAGE.lib){MANAGE.dirty=true;clearTimeout(mT);mT=setTimeout(saveManaged,700)}else save()}
 let mT=null;
 function planOf(d){return planById(d.pid)}
 function bestInRange(itemId,planId,e,p){const[lo]=range(e.reps);let best=null;S.logs.filter(L=>L.planId===planId).forEach(L=>{if(phaseAt(p,L.week).mode==='deload')return;const x=L.exercises.find(x=>x.exId===itemId);if(x)doneSets(x).forEach(s=>{if(s.reps>=lo&&s.kg!=null&&(best==null||s.kg>best))best=s.kg})});return best}
 
 Object.assign(ACT,{
-  newPlan:()=>{const lib=LIB();const src=[['blank','Em branco']].concat(Object.entries(WORKOUT_TEMPLATES).map(([k,t])=>['tpl:'+k,'Modelo pronto: '+t.name])).concat(lib.plans.map(p=>[p.id,'Copiar treinos de: '+p.name])).concat(U()&&myActive()?[['mine','Copiar treinos do MEU plano ativo']]:[]);
-    modal('Novo plano',`<label class="f"><span>Nome</span><input id="npName" placeholder="ex: Hipertrofia 2027 — Bloco 1"></label><label class="f"><span>Periodização</span><select id="npTpl">${Object.entries(PERIOD_TEMPLATES).map(([k,t])=>`<option value="${k}">${esc(t.name)}</option>`).join('')}</select></label><label class="f"><span>Treinos</span>${sel('',src,'blank','id="npSrc"')}</label><p class="mu xs">Você pode ajustar fases e semanas depois. Ao copiar treinos, as cargas são recalculadas para a nova periodização.</p>`,
-    [{label:'Cancelar'},{label:'Criar',cls:'pri',fn:()=>{const p=newPlan($('#npName').value.trim()||'Novo plano',$('#npTpl').value);const sv=$('#npSrc').value;
-      if(sv.startsWith('tpl:'))p.sessions=sessionsFromTemplate(sv.slice(4),p);const q=sv==='mine'?myActive():sv!=='blank'&&!sv.startsWith('tpl:')?planById(sv,lib):null;
-      if(q){p.sessions=clone(q.sessions);if(sv!=='mine'){p.tips=clone(q.tips||[]);p.nutrition=clone(q.nutrition||[])}p.sessions.forEach(s=>s.exercises.forEach(e=>{if(usesLoad(e))e.plan=e.base!=null?genPlan(e.base,e.inc,p):Array(weeksOf(p)).fill(null)}))}
+  newPlan:()=>{const lib=LIB();const G=(window.MODELOS&&MODELOS.GOALS)||{};const T=tplPlans();
+    const src=[['blank','Em branco (eu monto)']].concat(T.map(t=>['m:'+t.tpl.id,'Modelo: '+tplLabel(t)+' — '+t.name])).concat(lib.plans.map(p=>[p.id,'Copiar treinos de: '+p.name])).concat(U()&&myActive()?[['mine','Copiar treinos do MEU plano ativo']]:[]);
+    modal('Novo plano',`<label class="f"><span>Nome</span><input id="npName" placeholder="ex: Hipertrofia 2027 — Bloco 1"></label><label class="f"><span>Objetivo</span>${sel('',Object.entries(G).map(([k,g])=>[k,g.name]),'massa','id="npGoal"')}</label><label class="f"><span>Treinos</span>${sel('',src,'blank','id="npSrc"')}</label><label class="f"><span>Periodização</span><select id="npTpl"><option value="auto">Automática pelo objetivo</option>${Object.entries(PERIOD_TEMPLATES).map(([k,t])=>`<option value="${k}">${esc(t.name)}</option>`).join('')}</select></label><p class="mu xs">O objetivo ajusta séries, repetições e descanso dos modelos. Depois você pode trocar exercícios, cargas e repetições à vontade.</p>`,
+    [{label:'Cancelar'},{label:'Criar',cls:'pri',fn:()=>{const gk=$('#npGoal').value,pv=$('#npTpl').value,per=pv==='auto'?((G[gk]||{}).period||'hip12'):pv,sv=$('#npSrc').value,nm=$('#npName').value.trim();let p;
+      if(sv.startsWith('m:')){const tp=T.find(t=>t.tpl.id===sv.slice(2));p=planFromTpl(tp,nm||(tp.name.split(' · ')[0]+' · '+((G[gk]||{}).name||'')),gk,per)}
+      else{p=newPlan(nm||'Novo plano',per);const q=sv==='mine'?myActive():sv!=='blank'?planById(sv,lib):null;
+        if(q){p.sessions=clone(q.sessions);if(sv!=='mine'){p.tips=clone(q.tips||[]);p.nutrition=clone(q.nutrition||[])}p.sessions.forEach(s=>s.exercises.forEach(e=>{if(usesLoad(e))e.plan=e.base!=null?genPlan(e.base,e.inc,p):Array(weeksOf(p)).fill(null)}))}}
       lib.plans.push(p);if(!planById(lib.activeId,lib))lib.activeId=p.id;psave();go('plan',{id:p.id,uid:U()});toast('Plano criado')}}])},
   activatePlan:d=>{const lib=LIB(),p=planOf(d);const done=()=>{lib.activeId=p.id;psave();render();toast(p.name+' agora é o plano ativo')};
     if(!U()&&S.prog[p.id]&&S.prog[p.id].week>1)modal('Tornar ativo',`Você já tinha avançado até a semana ${S.prog[p.id].week} neste plano.`,[{label:'Recomeçar na S1',fn:()=>{S.prog[p.id]={week:1,round:(S.prog[p.id].round||1)+1};done()}},{label:'Continuar',cls:'pri',fn:done}]);
@@ -1230,7 +1235,7 @@ VIEWS.log=function({id}){const L=S.logs.find(l=>l.id===id);if(!L)return hdr('Reg
 VIEWS.ajustes=function(){const st=S.settings,p=myActive();
   let h=hdr('Perfil',esc(ME.name||'')+' · versão '+APP_VERSION,false,syncBadge());
   const mi=(act,ic,t,d,x='')=>`<div class="li tap" data-act="${act}" ${x}><span class="kd">${ic}</span><div class="t"><b>${t}</b><span class="mu sm">${d}</span></div><span class="mu">›</span></div>`;
-  h+=`<div class="card" style="padding:4px 14px">${mi('go','📋','Planos de treino','Em andamento, próximos e finalizados','data-v="planos"')}${mi('tab','🩺','Avaliação','Questionário e avaliação física','data-t="avaliacao"')}${ME.role==='master'?mi('openUsers','👥','Clientes','Planos, avaliações e acessos'):''}${mi('go','❓','Ajuda','Como usar cada parte do app','data-v="ajuda"')}</div>`;
+  h+=`<div class="card" style="padding:4px 14px">${mi('go','📋','Planos de treino','Em andamento, próximos e finalizados','data-v="planos"')}${mi('tab','🩺','Avaliação','Questionário e avaliação física','data-t="avaliacao"')}${ME.role==='master'?mi('openUsers','👥','Clientes','Planos, avaliações e acessos')+mi('go','🧩','Modelos de treino','Editar os treinos prontos do app','data-v="modelos"'):''}${mi('go','❓','Ajuda','Como usar cada parte do app','data-v="ajuda"')}</div>`;
   h+=`<div class="card"><div class="sw"><span>Sempre mostrar opções avançadas<div class="mu xs">Mostra fases, RIR e progressão de cargas abertas nos planos. Deixe desligado para uma visão mais simples.</div></span><input type="checkbox" data-sf="adv" ${st.adv?'checked':''}></div></div>`;
   {const tp=themePref();h+=`<h3>Aparência</h3><div class="seg">${[['dark','🌙 Escuro'],['light','☀️ Claro'],['auto','📱 Automático']].map(([k,l])=>`<button class="${tp===k?'on':''}" data-act="setTheme" data-t="${k}">${l}</button>`).join('')}</div><p class="mu xs" style="margin:6px 2px 0">Automático segue o modo claro/escuro do iPhone. Vale só para este aparelho.</p>`}
   if(p){const w=progOf(p).week,N=weeksOf(p);h+=`<h3>Plano ativo</h3><div class="card"><div class="b">${esc(p.name)}</div><p class="sm mu">A semana avança sozinha quando você completa todos os treinos. Use os botões só para corrigir.</p>
@@ -1255,6 +1260,37 @@ function onImport(inp){const file=inp.files[0];inp.value='';if(!file)return;cons
   if(!D||!Array.isArray(D.logs)){toast('Este arquivo não é um backup do app');return}
   confirmBox('Importar backup',`<p>Os dados atuais da sua conta serão <b>substituídos</b>:</p>${diffTable([['Treinos registrados',S.logs.length,`<b>${D.logs.length}</b>`],['Planos',S.lib.plans.length,`<b>${D.lib?D.lib.plans.length:(D.program?1:0)}</b>`]],['','Atual','Backup'])}`,'Substituir dados',()=>{const keep=S._sync;S=D;migrate();S._sync=Object.assign(freshSync(),{lastPull:keep.lastPull,dirtyLogs:S.logs.map(L=>L.id)});commit();V.tab='hoje';V.stack=[];render();toast('Backup importado')},true)};rd.readAsText(file)}
 
+/* ---------- MODELOS PRONTOS (modelos.js + edições do master no Supabase) ---------- */
+const TPL={lib:{v:3,plans:[],activeId:null},rows:{},loaded:false,snap:{},rebuild:true};
+function tplMeta(){const L=((window.MODELOS&&MODELOS.list)||[]).slice();[['d5-acad','split5',5],['d7-acad','hip7',7]].forEach(([id,k,d])=>{const t=WORKOUT_TEMPLATES[k];if(t)L.push({id,name:t.name,days:d,place:'academia',level:'normal',sessions:t.sessions})});
+  return L.sort((a,b)=>a.place.localeCompare(b.place)||a.days-b.days||(a.level===b.level?0:a.level==='iniciante'?1:-1))}
+function tplPlans(){if(TPL.rebuild){TPL.lib.plans=tplMeta().map(m=>{const meta={id:m.id,days:m.days,place:m.place,level:m.level};const r=TPL.rows[m.id];let p;
+    if(r&&r.data&&Array.isArray(r.data.sessions)){p=clone(r.data);meta.custom=true}else{p=newPlan(m.name,'hip12');try{p.sessions=sessionsFromRaw(m,p)}catch(e){console.error(e);p.sessions=[]}}
+    p.id='tpl_'+m.id;p.tpl=meta;return p});TPL.rebuild=false;TPL.lib.plans.forEach(p=>TPL.snap[p.id]=p.name+JSON.stringify(p.sessions))}return TPL.lib.plans}
+async function loadTpl(){if(!SB||TPL.loading)return;TPL.loading=true;try{const{data,error}=await SB.from('workout_templates').select('id,data,updated_at');if(error){TPL.err=error.message;return}TPL.rows={};(data||[]).forEach(x=>TPL.rows[x.id]=x);TPL.rebuild=true;TPL.loaded=true}finally{TPL.loading=false}}
+let tplT=null;
+function tplSave(){clearTimeout(tplT);tplT=setTimeout(async()=>{for(const p of TPL.lib.plans){const k=p.name+JSON.stringify(p.sessions);if(TPL.snap[p.id]===k)continue;const data=clone(p);delete data.tpl;
+    const{error}=await SB.from('workout_templates').upsert({id:p.tpl.id,data,updated_by:ME.id,updated_at:new Date().toISOString()});
+    if(error){toast('Não salvou o modelo: '+friendlyErr(error));return}TPL.snap[p.id]=k;p.tpl.custom=true;TPL.rows[p.tpl.id]={id:p.tpl.id,data}}
+  toast('Modelo salvo para todos');render()},900)}
+function tplLabel(p){const t=p.tpl||{};return`${t.days} dia${t.days===1?'':'s'} · ${t.place==='casa'?'casa':'academia'}${t.level==='iniciante'?' · iniciante':''}`}
+function applyGoal(p,gk){const g=(window.MODELOS&&MODELOS.GOALS[gk])||null;if(!g)return p;
+  p.sessions.forEach(s=>{if(g.cardio&&!s.cardio)s.cardio=g.cardio;s.exercises.forEach(e=>{if(e.kind==='cardio'||e.kind==='wod')return;
+    if(g.setsMax&&e.sets>g.setsMax)e.sets=g.setsMax;
+    if(g.reps&&e.kind!=='time')e.reps=g.reps;
+    if(e.restSec){if(g.restMax&&e.restSec>g.restMax)e.restSec=g.restMax;if(g.restMin&&e.restSec<g.restMin)e.restSec=g.restMin;e.rest=e.restSec>=120?(e.restSec/60)+' min':e.restSec+' s'}
+    if(g.rir&&e.rir)e.rir=g.rir})});p.goal=gk;return p}
+function planFromTpl(tp,name,gk,period){const g=(window.MODELOS&&MODELOS.GOALS[gk])||{};const p=newPlan(name||tp.name,period||g.period||'hip12');
+  p.sessions=clone(tp.sessions).map(s=>Object.assign(s,{id:uid36('s'),exercises:s.exercises.map(e=>Object.assign(e,{id:uid36('e')}))}));
+  applyGoal(p,gk);p.sessions.forEach(s=>s.exercises.forEach(e=>{if(usesLoad(e))e.plan=e.base!=null?genPlan(e.base,e.inc,p):Array(weeksOf(p)).fill(null)}));p.from=tp.tpl&&tp.tpl.id;return p}
+VIEWS.modelos=function(){if(ME.role!=='master')return hdr('Modelos de treino','',true)+'<div class="empty">Apenas o master edita modelos.</div>';
+  if(!TPL.loaded&&!TPL.err)loadTpl().then(render);const L=tplPlans();
+  let h=hdr('Modelos de treino','Base dos planos criados no app',true);
+  h+=`<p class="mu sm" style="margin-top:0">Toque em um modelo para trocar exercícios, séries, repetições ou descanso. Vale para os próximos planos criados a partir dele.</p>`;
+  if(TPL.err)h+=`<div class="banner">⚠️ Não consegui ler os modelos salvos (${esc(TPL.err)}). Falta aplicar o SQL da etapa 2? Por enquanto aparecem os modelos originais e as edições não serão salvas.</div>`;
+  for(const pl of [['academia','🏋️ Academia'],['casa','🏠 Casa']]){const g=L.filter(p=>p.tpl.place===pl[0]);if(!g.length)continue;
+    h+=`<h3>${pl[1]}</h3><div class="card" style="padding:4px 14px">${g.map(p=>`<div class="li tap" data-act="go" data-v="plan" data-id="${p.id}" data-uid="__tpl"><span class="pill" style="min-width:34px;text-align:center">${p.tpl.days}d</span><div class="t"><b>${esc(p.name)}</b><span class="mu sm">${p.sessions.length} treinos${p.tpl.level==='iniciante'?' · iniciante':''}${p.tpl.custom?' · <span class="ac">editado</span>':''}</span></div><span class="mu">›</span></div>`).join('')}</div>`}
+  return h};
 function ADV(){return!!(S&&S.settings&&S.settings.adv)}
 let PROG='evo';
 function progSeg(t){return`<div class="seg" style="margin-bottom:10px">${[['evo','📈 Evolução'],['hist','🕒 Histórico']].map(([k,l])=>`<button class="${t===k?'on':''}" data-act="progTab" data-t="${k}">${l}</button>`).join('')}</div>`}
@@ -1390,6 +1426,7 @@ function loadUser(){KEY=userKey(ME.id);load();}
 
 async function sync(manual){
   if(!ME||!SB||!S||SYNCING)return;
+  if(!TPL.loaded&&!TPL.loading)loadTpl();
   if(!navigator.onLine){if(manual)toast('Sem internet — os dados ficam guardados e sobem depois');refreshBadges();return}
   SYNCING=true;refreshBadges();let changed=false;
   try{
@@ -1542,6 +1579,7 @@ document.addEventListener('keydown',e=>{if(e.key==='Enter'&&e.target&&(e.target.
 Object.assign(ACT,{
   tab:d=>{V.tab=d.t;V.stack=[];render();scrollTo(0,0)},
   progTab:d=>{PROG=d.t;render()},
+  tplReset:d=>{const p=planById(d.pid,TPL.lib);if(!p)return;confirmBox('Restaurar modelo',`<p>Voltar <b>${esc(p.name)}</b> para a versão original do app? As suas alterações neste modelo serão perdidas. Planos já criados não mudam.</p>`,'Restaurar',async()=>{const{error}=await SB.from('workout_templates').delete().eq('id',p.tpl.id);if(error){toast(friendlyErr(error));return}delete TPL.rows[p.tpl.id];TPL.rebuild=true;tplPlans();toast('Modelo restaurado');render()})},
   avTab:d=>{AVT=d.t;render()},
   back:()=>{const t=V.stack.pop();if(t&&t.params&&t.params.uid&&!V.stack.some(x=>x.params&&x.params.uid)&&MANAGE&&MANAGE.dirty)saveManaged();render()},
   go:d=>{if(d.v==='picker'){PK.q='';PK.cat=d.mode==='insert'?'Crossfit':'';PK.grp=''}go(d.v,{id:d.id,pid:d.pid,sid:d.sid,eid:d.eid,mode:d.mode,uid:d.uid||''})},
