@@ -1003,7 +1003,7 @@ const _pick=ACT.pick;ACT.pick=d=>{if(d._c&&!allCatalog().some(x=>x.id===d._c.id)
    Cardio com FC média: fórmula de Keytel (2005). Valores são estimativas (±20–30%). */
 /* nome de exibição: um só lugar (profiles.name), usado no perfil, na avaliação e na lista de usuários */
 async function setProfileName(uid,name){name=String(name||'').replace(/\s+/g,' ').trim().slice(0,80);if(name.length<2)throw new Error('Informe o nome (mínimo 2 letras)');
-  const{error}=await SB.from('profiles').update({name}).eq('id',uid);if(error)throw new Error(friendlyErr(error));
+  const{data,error}=await SB.from('profiles').update({name}).eq('id',uid).select('id');if(error)throw new Error(friendlyErr(error));if(!data||!data.length)throw new Error('sem permissão para alterar este nome');
   if(ME&&uid===ME.id){ME.name=name;localStorage.setItem('treino.me',JSON.stringify(ME))}
   if(typeof USERS!=='undefined'&&USERS&&USERS.list){const u=USERS.list.find(x=>x.id===uid);if(u)u.name=name}return name}
 window.setProfileName=setProfileName;
