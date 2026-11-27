@@ -14,7 +14,8 @@
   const CFG = {
     BRAND: 'Treino',                 // nome mostrado no formulário e no termo
     CONTROLLER: 'Luiz Santos',                // quem responde pelos dados (nome/empresa). Vazio = "o profissional responsável"
-    CONTACT: 'luiz.lhos@gmail.com',                   // e-mail/WhatsApp para pedidos de privacidade (LGPD). Mostrado no termo se preenchido
+    CONTACT: 'luiz.lhos@gmail.com',
+    WHATSAPP: '',                                    // v4: WhatsApp do treinador (com DDD) para o aluno falar com ele; vazio esconde o botão                   // e-mail/WhatsApp para pedidos de privacidade (LGPD). Mostrado no termo se preenchido
     FN: 'public-intake',             // Edge Function pública
     BUCKET: 'assessment-photos',
     CONSENT_VERSION: 'v2-2026-11',   // mude ao alterar o texto do termo
@@ -707,18 +708,51 @@ html[data-theme=light] .av-q{box-shadow:0 1px 2px rgba(16,24,40,.06)}
     return `<div class="li tap row" data-act="avOpenDet" data-id="${row.id}" data-uid="${row.user_id}" style="padding:10px 0;border-top:1px solid var(--s3)"><span class="sp"><b>${esc(new Date(row.created_at).toLocaleDateString('pt-BR'))}</b>${alert ? ' <span class="pill" style="background:var(--warn);color:#201800">PAR-Q</span>' : ''}<div class="mu xs">${[row.weight_kg && f1(row.weight_kg) + ' kg', row.bf_scale_pct != null && f1(row.bf_scale_pct) + '% (balança)', row.source === 'master' ? 'pelo administrador' : row.source === 'public' ? 'formulário público' : null].filter(Boolean).join(' · ') || '—'}</div></span><span class="mu">›</span></div>`;
   }
 
+  // ---------- v4: resumo, evolução de uma medida e contato ----------
+  const EVO_K = [['peso', 'Peso', 'kg', r => analyze(r).w, -1], ['gordura', 'Gordura', '%', r => analyze(r).bf, -1], ['abdomen', 'Abdômen', 'cm', r => +(r.answers || {}).abdomen || null, -1], ['waist', 'Cintura', 'cm', r => +(r.answers || {}).waist || null, -1], ['hip', 'Quadril', 'cm', r => +(r.answers || {}).hip || null, -1], ['arm', 'Braço', 'cm', r => +(r.answers || {}).arm || null, 1], ['thigh', 'Coxa', 'cm', r => +(r.answers || {}).thigh || null, 1], ['chest', 'Peitoral', 'cm', r => +(r.answers || {}).chest || null, 1]];
+  function diasTxt(d) { const n = Math.round((Date.now() - new Date(d).getTime()) / 864e5); return n <= 0 ? 'hoje' : n === 1 ? 'ontem' : 'há ' + n + ' dias'; }
+  function tileHtml(label, v, u, pv, dir) {
+    let d = '';
+    if (v != null && pv != null) { const x = Math.round((v - pv) * 10) / 10; d = !x ? '<span class="mu xs">sem mudança</span>' : `<span class="xs b" style="color:${(dir < 0 ? x < 0 : x > 0) ? 'var(--ok)' : 'var(--warn)'}">${x > 0 ? '+' : ''}${f1(x)} ${u === '%' ? 'ponto' + (Math.abs(x) === 1 ? '' : 's') : u}</span>`; }
+    return `<div><span>${esc(label)}</span><b>${v != null ? f1(v) + (u === '%' ? '%' : ' ' + u) : '—'}</b>${d}</div>`;
+  }
+  function summaryHtml(L, P) {
+    const R = analyze(L), Q = P ? analyze(P) : null, a = L.answers || {}, pa = P ? P.answers || {} : {};
+    const dw = a.goal === 'hipertrofia' ? 1 : -1;
+    return `<div class="card"><div class="row"><b class="sp">Última avaliação</b><span class="mu sm">${esc(new Date(L.created_at).toLocaleDateString('pt-BR'))} · ${diasTxt(L.created_at)}</span></div>
+      <div class="avt">${tileHtml('Peso', R.w, 'kg', Q && Q.w, dw)}${tileHtml(R.bfSrc === 'balança' ? 'Gordura (balança)' : 'Gordura', R.bf, '%', Q && Q.bf, -1)}${tileHtml('Abdômen', +a.abdomen || null, 'cm', +pa.abdomen || null, -1)}${tileHtml('Braço', +a.arm || null, 'cm', +pa.arm || null, 1)}</div>
+      ${P ? `<p class="mu sm" style="margin:8px 0 0">Comparado com a avaliação anterior (${esc(new Date(P.created_at).toLocaleDateString('pt-BR'))}).</p>` : ''}
+      ${R.flags.length ? R.flags.map(f => `<div class="sug down" style="margin:8px 0 0">⚠️ ${esc(f)}</div>`).join('') : ''}
+      <button class="btn block" data-act="avOpenDet" data-id="${L.id}" data-uid="${L.user_id}" style="margin-top:10px">Ver todas as medidas e a análise</button></div>`;
+  }
+  function evoMedHtml(list, key) {
+    const rows = list.slice().reverse(), opts = EVO_K.filter(([, , , g]) => rows.filter(r => g(r) != null).length >= 2);
+    if (!opts.length) return '';
+    const cur = opts.find(o => o[0] === (AV.evoK && AV.evoK[key])) || opts.find(o => o[0] === 'abdomen') || opts[0];
+    const pts = rows.map(r => [r.created_at, cur[3](r)]).filter(x => x[1] != null).slice(-8), v = pts.map(x => x[1]);
+    const mn = Math.min(...v), mx = Math.max(...v), W = 320, H = 96, rg = mx - mn || 1;
+    const xy = v.map((x, i) => [Math.round(12 + i * (W - 24) / (v.length - 1)), Math.round(H - 22 - (x - mn) * (H - 34) / rg)]);
+    const svg = `<svg viewBox="0 0 ${W} ${H}" width="100%" height="${H}" role="img" aria-label="${esc(cur[1])} nas últimas ${v.length} avaliações: ${v.map(f1).join(', ')} ${cur[2]}"><path d="M${xy.map(p => p.join(',')).join(' L')}" fill="none" stroke="var(--acu)" stroke-width="3" stroke-linejoin="round"/>${xy.map(([x, y]) => `<circle cx="${x}" cy="${y}" r="4" fill="var(--acu)"/>`).join('')}${pts.map((p, i) => `<text x="${xy[i][0]}" y="${H - 4}" text-anchor="middle" font-size="11" fill="var(--mu)">${new Date(p[0]).toLocaleDateString('pt-BR', { month: 'short' }).replace('.', '')}</text>`).join('')}</svg>`;
+    return `<div class="card"><div class="row"><b class="sp">Evolução: ${esc(cur[1].toLowerCase())}</b><span class="mu sm">${f1(v[0])} → ${f1(v[v.length - 1])} ${cur[2]}</span></div>${svg}<div class="chips" style="margin-top:6px">${opts.map(o => `<button class="chip ${o === cur ? 'on' : ''}" data-act="avEvo" data-k="${key}" data-m="${o[0]}">${esc(o[1])}</button>`).join('')}</div></div>`;
+  }
+  function waLink(num, txt) { const d = String(num || '').replace(/\D/g, ''); if (d.length < 10) return ''; return 'https://wa.me/' + (d.length <= 11 ? '55' + d : d) + (txt ? '?text=' + encodeURIComponent(txt) : ''); }
+  function waResumo(row, nome) { const R = analyze(row), a = row.answers || {}; return `Olá${nome ? ', ' + nome.split(' ')[0] : ''}! Sua avaliação de ${new Date(row.created_at).toLocaleDateString('pt-BR')}: peso ${R.w ? f1(R.w) + ' kg' : '—'}${R.bf != null ? ', gordura ' + f1(R.bf) + '%' : ''}${a.abdomen ? ', abdômen ' + f1(a.abdomen) + ' cm' : ''}. Pode me mandar as fotos de frente, costas e lados por aqui.`; }
+
   function viewMine(p) {
     const c = loadList('mine', ME.id);
     let h = p.embed ? '' : hdr('Minha avaliação', 'Suas respostas e análise', !p.welcome ? true : false);
     if (p.welcome) h += `<div class="av-note">Senha criada! Esta é a sua análise. Abaixo você pode enviar as 4 fotos.</div>`;
     if (c.loading) return h + '<div class="empty">Carregando…</div>';
     if (c.err) return h + `<div class="card">Erro: ${esc(c.err)}</div>`;
-    if (!c.list.length) return h + `<div class="card"><div class="mu sm">Você ainda não fez sua avaliação: medidas, objetivo e rotina. Leva uns 3 minutos (as medidas com fita, as dobras e a frequência cardíaca são opcionais).</div><div style="height:10px"></div><button class="btn pri block" data-act="avNew">Responder questionário</button></div>`;
-    const L = c.list[0];
-    h += `<h3>Última · ${esc(new Date(L.created_at).toLocaleDateString('pt-BR'))}</h3>` + resultHtml(L) + photosHtml(L, true);
+    if (!c.list.length) return h + `<div class="card"><div class="mu sm">Você ainda não fez sua avaliação: medidas, objetivo e rotina. Leva uns 5 minutos e cada medida explica como medir.</div><div style="height:10px"></div><button class="btn pri block big" data-act="avNew">+ Fazer minha avaliação</button></div>`;
+    const L = c.list[0], P = c.list[1] || null;
+    h += summaryHtml(L, P);
+    h += `<button class="btn pri block big" data-act="avNew">+ Nova avaliação</button><p class="mu sm" style="text-align:center;margin:6px 0 10px">Leva uns 5 minutos. Cada medida explica como medir.</p>`;
+    h += evoMedHtml(c.list, 'mine');
+    h += photosHtml(L, true);
     setTimeout(() => loadPhotos(L), 0);
     h += `<h3>Histórico</h3><div class="card" style="padding:0 14px">${c.list.map(r => listCard(r)).join('')}</div>`;
-    h += `<div style="height:8px"></div><button class="btn pri block" data-act="avNew">+ Nova avaliação</button><div style="height:8px"></div><button class="btn block" data-act="avOpenDet" data-id="${L.id}" data-uid="${L.user_id}">Ver minhas respostas</button>`;
+    if (CFG.WHATSAPP) { const u = waLink(CFG.WHATSAPP, 'Olá! Segue minha avaliação de ' + new Date(L.created_at).toLocaleDateString('pt-BR') + '.'); if (u) h += `<a class="btn block wa" href="${u}" target="_blank" rel="noopener">Falar com o treinador pelo WhatsApp</a>`; }
     h += `<div style="height:8px"></div><button class="btn block" data-act="avDelAll" style="color:var(--bad)">Excluir meus dados de avaliação</button>`;
     return h;
   }
@@ -728,6 +762,7 @@ html[data-theme=light] .av-q{box-shadow:0 1px 2px rgba(16,24,40,.06)}
     if (!row) { SB.from('assessments').select(COLS).eq('id', id).maybeSingle().then(({ data }) => { if (data) { AV.cache.det[id] = data; render(); } else { toast('Avaliação não encontrada'); } }); return hdr('Avaliação', '', true) + '<div class="empty">Carregando…</div>'; }
     const mine = row.user_id === ME.id, isM = ME.role === 'master';
     let h = hdr('Avaliação', esc(new Date(row.created_at).toLocaleDateString('pt-BR')) + (isM && !mine ? ' · ' + esc((USERS && USERS.list && (USERS.list.find(u => u.id === row.user_id) || {}).name) || 'cliente') : ''), true);
+    if (isM && !mine && (row.answers || {}).whatsapp) { const nm = (USERS && USERS.list && (USERS.list.find(u => u.id === row.user_id) || {}).name) || ''; const u = waLink(row.answers.whatsapp, waResumo(row, nm)); if (u) h += `<a class="btn block wa" href="${u}" target="_blank" rel="noopener" style="margin-bottom:8px">Enviar resumo pelo WhatsApp</a>`; }
     if (isM && !mine) h += `<button class="btn pri block" data-act="wzForClient" data-uid="${row.user_id}" data-aid="${row.id}" style="margin-bottom:10px">🏋️ Montar treino a partir desta avaliação</button>`;
     h += resultHtml(row) + photosHtml(row, mine || isM) + answersHtml(row);
     h += `<p class="mu xs">Consentimento registrado em ${esc(new Date(row.consent_at).toLocaleString('pt-BR'))} (termo ${esc(row.consent_version)}).</p>`;
@@ -758,7 +793,7 @@ html[data-theme=light] .av-q{box-shadow:0 1px 2px rgba(16,24,40,.06)}
     if (c.loading) return h + '<div class="empty">Carregando…</div>';
     if (c.err) return h + `<div class="card">Erro: ${esc(c.err)}</div>`;
     if (!c.list.length) return h + '<div class="empty">Nenhuma avaliação deste cliente.</div>';
-    return h + `<h3>Mais recente</h3>${resultHtml(c.list[0])}<h3>Histórico</h3><div class="card" style="padding:0 14px">${c.list.map(r => listCard(r)).join('')}</div>`;
+    return h + summaryHtml(c.list[0], c.list[1] || null) + evoMedHtml(c.list, 'u' + uid) + `<h3>Histórico</h3><div class="card" style="padding:0 14px">${c.list.map(r => listCard(r)).join('')}</div>`;
   }
 
   function viewAll(p) {
@@ -790,6 +825,7 @@ html[data-theme=light] .av-q{box-shadow:0 1px 2px rgba(16,24,40,.06)}
 
   /* ---------- instalação (chamada pelo index.html) ---------- */
   function install({ VIEWS, ACT }) {
+    ACT.avEvo = d => { AV.evoK = AV.evoK || {}; AV.evoK[d.k] = d.m; render(); };
     injectCss();
     VIEWS.aval = p => viewMine(p || {});
     VIEWS.avdet = viewDet;

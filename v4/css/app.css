@@ -273,3 +273,28 @@ button.card.tile{cursor:pointer}
 .bignum{font-size:28px;font-weight:800}
 .trocar{position:relative;flex:none}
 .trocar select{position:absolute;inset:0;opacity:0;width:100%;height:100%;cursor:pointer}
+/* v4 — Avaliação */
+.avt{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-top:10px}
+.avt>div{background:var(--s2);border-radius:12px;padding:10px;display:flex;flex-direction:column}
+.avt span{font-size:12px;color:var(--mu)}
+.avt b{font-size:20px}
+.btn.wa{display:flex;align-items:center;justify-content:center;gap:8px;text-decoration:none;border-color:color-mix(in srgb,#25d366 50%,var(--s3))}
+.btn.wa::before{content:"";width:10px;height:10px;border-radius:5px;background:#25d366}
+/* v4 — Ajustes e usuários */
+.hd.prof{align-items:center;gap:12px}
+.av{width:56px;height:56px;border-radius:28px;background:var(--ac);color:var(--onac);font-weight:800;font-size:20px;display:flex;align-items:center;justify-content:center;flex:none}
+.av.sm{width:42px;height:42px;font-size:15px;background:var(--s3);color:var(--tx)}
+html[data-theme=light] .av:not(.sm){color:#fff}
+.sec{font-size:12px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--mu);margin:18px 2px 6px}
+.card.alist{padding:0 14px}
+.aitem{display:flex;align-items:center;gap:12px;width:100%;padding:12px 0;background:none;border:none;border-bottom:1px solid var(--s3);font:inherit;color:inherit;text-align:left;cursor:pointer}
+.aitem:last-child{border-bottom:none}
+.aitem .t{flex:1;min-width:0;display:flex;flex-direction:column}
+.tag{font-size:11px;font-weight:700;color:var(--ac);border:1px solid var(--ac);border-radius:6px;padding:1px 5px;margin-left:4px}
+.li2.off{opacity:.55}
+.ubig{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-top:12px}
+.ubig .btn{min-height:64px;font-weight:700;margin:0}
+.ubig .btn:disabled{opacity:.4}
+.mtabs{margin:4px 0 8px}
+.vbox{position:relative;width:100%;aspect-ratio:16/9;border-radius:12px;overflow:hidden;background:#000;margin:4px 0 10px}
+.vbox iframe,.vbox video{position:absolute;inset:0;width:100%;height:100%;border:0}
