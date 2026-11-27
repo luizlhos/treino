@@ -227,9 +227,9 @@ html[data-theme=light] .av-q{box-shadow:0 1px 2px rgba(16,24,40,.06)}
   function fig(kind) {
     const side = kind === 'left' || kind === 'right';
     const x = side ? 0 : 6;
-    return `<svg viewBox="0 0 60 120" aria-hidden="true"><circle cx="30" cy="12" r="9" fill="#5b8cff"/>${side
-      ? '<rect x="22" y="24" width="16" height="42" rx="7" fill="#5b8cff"/><rect x="25" y="64" width="10" height="50" rx="4" fill="#9097a6"/>'
-      : `<rect x="${14 + x - 6}" y="24" width="${32 - 2 * (x - 6)}" height="42" rx="7" fill="#5b8cff"/><rect x="${6}" y="26" width="7" height="40" rx="3" fill="#5b8cff"/><rect x="47" y="26" width="7" height="40" rx="3" fill="#5b8cff"/><rect x="19" y="64" width="9" height="50" rx="4" fill="#9097a6"/><rect x="32" y="64" width="9" height="50" rx="4" fill="#9097a6"/>`}</svg>`;
+    return `<svg viewBox="0 0 60 120" aria-hidden="true"><circle cx="30" cy="12" r="9" fill="#ff7a3d"/>${side
+      ? '<rect x="22" y="24" width="16" height="42" rx="7" fill="#ff7a3d"/><rect x="25" y="64" width="10" height="50" rx="4" fill="#9097a6"/>'
+      : `<rect x="${14 + x - 6}" y="24" width="${32 - 2 * (x - 6)}" height="42" rx="7" fill="#ff7a3d"/><rect x="${6}" y="26" width="7" height="40" rx="3" fill="#ff7a3d"/><rect x="47" y="26" width="7" height="40" rx="3" fill="#ff7a3d"/><rect x="19" y="64" width="9" height="50" rx="4" fill="#9097a6"/><rect x="32" y="64" width="9" height="50" rx="4" fill="#9097a6"/>`}</svg>`;
   }
 
   function qHtml(q, val, n, A) {
