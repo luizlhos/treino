@@ -174,3 +174,35 @@ html[data-theme=light] h1,html[data-theme=light] .hero h2{filter:none}
 .mmus{display:flex;flex-wrap:wrap;gap:6px;margin:4px 0 6px}
 .mpassos{margin:6px 0 10px;padding-left:20px;line-height:1.45}
 .mpassos li{margin:3px 0}
+/* v4 — treino em andamento */
+.sg4{display:grid;gap:6px;align-items:center;margin-top:6px}
+.sg4.hd2{font-size:11px;color:var(--mu);text-transform:uppercase;letter-spacing:.04em;margin-top:10px}
+.sg4.hd2 span{text-align:center}
+.sg4 .n{text-align:center;color:var(--mu);font-weight:700}
+.sg4 input{text-align:center;padding:10px 4px;min-width:0}
+.sg4.done input{background:color-mix(in srgb,var(--ok) 14%,var(--s2));border-color:color-mix(in srgb,var(--ok) 40%,transparent)}
+.sg4.done .chk{background:var(--ok);border-color:var(--ok);color:#03200f}
+html[data-theme=light] .sg4.done .chk{color:#fff}
+.card.exc{display:flex;align-items:center;gap:12px;width:100%;text-align:left;font:inherit;color:inherit;cursor:pointer;padding:10px}
+.card.exc .thumb{margin:0}
+.card.exc .t{flex:1;min-width:0;display:flex;flex-direction:column}
+.card.exc.exdone{opacity:.72}
+.thumb.ph{display:flex;align-items:center;justify-content:center;font-size:22px}
+.card.exon{border:1.5px solid var(--ac)}
+.exh2{display:flex;gap:12px;align-items:center}
+.exh2 .t{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
+.exh2 .nm{font-size:17px;line-height:1.2}
+.demo{position:relative;width:84px;height:84px;flex:none;border-radius:12px;overflow:hidden;padding:0;border:1px solid var(--s3);background:var(--s2);cursor:pointer}
+.demo img{width:100%;height:100%;object-fit:cover;display:block}
+.demo .play{position:absolute;right:4px;bottom:4px;width:26px;height:26px;border-radius:13px;background:rgba(14,16,20,.8);color:var(--ac);font-size:11px;display:flex;align-items:center;justify-content:center}
+.lnk{background:none;border:none;padding:4px 0 0;color:var(--ac);font:inherit;font-weight:600;font-size:14px;text-align:left;cursor:pointer;align-self:flex-start}
+/* v4 — detalhe do exercício */
+.stat3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-top:8px}
+.stat3>div{background:var(--s2);border-radius:12px;padding:8px 10px;display:flex;flex-direction:column}
+.stat3 span{font-size:12px;color:var(--mu)}
+.stat3 b{font-size:18px}
+.stat3 b.ac{color:var(--ac)}
+.card.mus .row{gap:8px;margin-top:6px;align-items:center}
+.card.mus .dot{width:12px;height:12px;border-radius:3px;background:color-mix(in srgb,var(--ac) 45%,var(--s2));flex:none}
+.card.mus .dot.on{background:var(--ac)}
+.spark{width:100%;height:64px;margin-top:8px;display:block}
