@@ -1,4 +1,4 @@
-const CACHE='treinov4-4.0.0-alpha.6';
+const CACHE='treinov4-4.0.0-alpha.7';
 const ASSETS=['./','./index.html','./manifest.webmanifest','./icons/icon-192.png','./icons/icon-512.png','./icons/apple-touch-icon.png','./supabase.min.js','./css/app.css','./js/catalogo.js','./js/midia.js','./js/app.js','./avaliacao.js','./modelos.js','./fonts/anton.woff2','./fonts/barlow-400.woff2','./fonts/barlow-600.woff2','./fonts/barlow-700.woff2','./fonts/barlow-condensed-700i.woff2'];
 self.addEventListener('install',e=>{e.waitUntil(caches.open(CACHE).then(c=>c.addAll(ASSETS)).then(()=>self.skipWaiting()))});
 self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k.startsWith('treinov4-')&&k!==CACHE).map(k=>caches.delete(k)))).then(()=>self.clients.claim()))});

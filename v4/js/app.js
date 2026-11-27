@@ -1,4 +1,4 @@
-const APP_VERSION='4.0.0-alpha.6';
+const APP_VERSION='4.0.0-alpha.7';
 /* ---------- tema (preferência do aparelho) ---------- */
 const THEME_KEY='treino.theme';const MQ_DARK=window.matchMedia?matchMedia('(prefers-color-scheme: dark)'):null;
 function themePref(){try{return localStorage.getItem(THEME_KEY)||'light'}catch(e){return'light'}}
@@ -432,8 +432,10 @@ VIEWS.sessedit=function({id,pid}){const p=planById(pid),s=sessIn(p,id);if(!s)ret
   h+=`<details class="card"><summary><b>Mais detalhes do treino</b> <span class="mu sm">grupos, duração, notas, cardio</span></summary><div class="grid2"><label class="f"><span>Grupos musculares</span><input data-pf="groups" ${a} value="${esc(s.groups||'')}"></label><label class="f"><span>Duração</span><input data-pf="duration" ${a} value="${esc(s.duration||'')}" placeholder="ex: 60 min"></label></div><label class="f"><span>Notas</span><input data-pf="notes" ${a} value="${esc(s.notes||'')}"></label><label class="f"><span>Cardio do dia (lembrete)</span><input data-pf="cardio" ${a} value="${esc(s.cardio||'')}"></label></details>`;
   h+=`<div class="row"><button class="btn sp" data-act="dupSess" ${a} ${ua()}>Duplicar treino</button><button class="btn sp" data-act="delSess" ${a} style="color:var(--bad)">Excluir treino</button></div>`;
   return h};
-function midiaDetail(k,m){if(!m)return'';let h='';
-  if(m.f){const n=Math.min(m.n||1,2);h+=`<div class="mfotos">${[0,1].slice(0,n).map(i=>`<figure><img src="${fotoDe(k,i)}" alt="${i?'Posição final':'Posição inicial'}" loading="lazy"><figcaption>${i?'2 · Fim':'1 · Início'}</figcaption></figure>`).join('')}</div>`}
+const MT={t:'video'};ACT.mTab=d=>{MT.t=d.t;render()};
+function midiaDetail(k,m){if(!m)return'';let h='';const vu=videoOf(k);
+  if(vu){h+=`<div class="seg mtabs" role="tablist"><button class="${MT.t!=='fotos'||!m.f?'on':''}" data-act="mTab" data-t="video">Vídeo</button>${m.f?`<button class="${MT.t==='fotos'?'on':''}" data-act="mTab" data-t="fotos">Fotos</button>`:''}</div>`;if(MT.t!=='fotos'||!m.f)h+=videoHTML(vu)}
+  if(m.f&&(!vu||MT.t==='fotos')){const n=Math.min(m.n||1,2);h+=`<div class="mfotos">${[0,1].slice(0,n).map(i=>`<figure><img src="${fotoDe(k,i)}" alt="${i?'Posição final':'Posição inicial'}" loading="lazy"><figcaption>${i?'2 · Fim':'1 · Início'}</figcaption></figure>`).join('')}</div>`}
   if((m.p&&m.p.length)||(m.s&&m.s.length))h+=`<div class="card mus"><b>Músculos</b>${m.p&&m.p.length?`<div class="row sm"><i class="dot on"></i><span><b>Principal:</b> ${m.p.map(esc).join(', ')}</span></div>`:''}${m.s&&m.s.length?`<div class="row sm"><i class="dot"></i><span><b>Ajudam:</b> ${m.s.map(esc).join(', ')}</span></div>`:''}</div>`;
   if(m.c&&m.c.length)h+=`<div class="card"><b>Como fazer</b><ol class="mpassos">${m.c.map(x=>`<li>${esc(x)}</li>`).join('')}</ol></div>`;
   if(m.e&&m.e.length)h+=`<div class="card"><b>Evite</b><ul class="mpassos">${m.e.map(x=>`<li>${esc(x)}</li>`).join('')}</ul></div>`;
@@ -836,27 +838,42 @@ VIEWS.log=function({id}){const L=S.logs.find(l=>l.id===id);if(!L)return hdr('Reg
   h+=`<button class="btn block" data-act="delLog" data-id="${L.id}" style="color:var(--bad)">Excluir registro</button>`;return h};
 
 /* ---------- AJUSTES ---------- */
-VIEWS.ajustes=function(){const st=S.settings,p=myActive();
-  let h=hdr('Ajustes',esc(ME.name||'')+' · versão '+APP_VERSION,false,syncBadge());
-  const mi=(act,ic,t,d,x='')=>`<div class="li tap" data-act="${act}" ${x}><span class="kd">${ic}</span><div class="t"><b>${t}</b><span class="mu sm">${d}</span></div><span class="mu">›</span></div>`;
-  h+=`<div class="card" style="padding:4px 14px">${mi('go','📋','Planos de treino','Em andamento, próximos e finalizados','data-v="planos"')}${ME.role==='master'?mi('openUsers','👥','Gerenciar usuários','Clientes, planos, avaliações e acessos')+mi('go','🧩','Modelos de treino','Editar os treinos prontos do app','data-v="modelos"'):''}${mi('go','❓','Ajuda','Como usar cada parte do app','data-v="ajuda"')}</div>`;
-  h+=`<div class="card"><div class="sw"><span>Sempre mostrar opções avançadas<div class="mu xs">Mostra fases, RIR e progressão de cargas abertas nos planos. Deixe desligado para uma visão mais simples.</div></span><input type="checkbox" data-sf="adv" ${st.adv?'checked':''}></div></div>`;
-  {const tp=themePref();h+=`<h3>Aparência</h3><div class="seg">${[['dark','🌙 Escuro'],['light','☀️ Claro'],['auto','📱 Automático']].map(([k,l])=>`<button class="${tp===k?'on':''}" data-act="setTheme" data-t="${k}">${l}</button>`).join('')}</div><p class="mu xs" style="margin:6px 2px 0">Automático segue o modo claro/escuro do iPhone. Vale só para este aparelho.</p>`}
-  if(p){const w=progOf(p).week,N=weeksOf(p);h+=`<h3>Plano ativo</h3><div class="card"><div class="b">${esc(p.name)}</div><p class="sm mu">A semana avança sozinha quando você completa todos os treinos. Use os botões só para corrigir.</p>
-    <div class="row"><button class="btn smb" data-act="shiftWeek" data-d="-1">◀ Voltar</button><div class="sp" style="text-align:center"><b>Semana ${Math.min(w,N+1)}</b><div class="mu xs">${w<=N?esc(phaseAt(p,w).name):'concluído'}</div></div><button class="btn smb" data-act="shiftWeek" data-d="1">Avançar ▶</button></div></div>`}
-  {const B=bodyOf(),r=bmrOf(B);h+=`<h3>Meus dados</h3><div class="card"><label class="f" style="margin-top:0"><span>Nome de exibição</span><input id="bfName" maxlength="80" autocomplete="name" value="${esc(ME.name||'')}" placeholder="Seu nome"></label><div class="grid2"><label class="f" style="margin-top:0"><span>Sexo</span>${sel('',[['','—'],['M','Masculino'],['F','Feminino']],B.sex,'id="bfSex"')}</label><label class="f" style="margin-top:0"><span>Nascimento (DD/MM/AAAA)</span><input id="bfBirth" data-mask="date" inputmode="numeric" maxlength="10" placeholder="dd/mm/aaaa" value="${esc(isoToBR(B.birth))}" autocomplete="bday"></label></div>
+function aitem(act,t,d,x){return`<button class="aitem" data-act="${act}" ${x||''}><span class="t"><b>${t}</b>${d?`<span class="mu sm">${d}</span>`:''}</span><span class="mu" aria-hidden="true">›</span></button>`}
+function initials(n){return String(n||'?').trim().split(/\s+/).filter(Boolean).map(x=>x[0]).slice(0,2).join('').toUpperCase()||'?'}
+VIEWS.ajustes=function(){const st=S.settings,p=myActive(),isM=ME.role==='master';
+  let h=`<div class="hd prof"><span class="av">${esc(initials(ME.name))}</span><div class="sp" style="min-width:0"><h1>${esc(ME.name||'Ajustes')}</h1><div class="mu sm">${isM?'Master · ':''}versão ${APP_VERSION}</div></div>${syncBadge()}</div>`;
+  const lib=S.lib,act=planById(lib.activeId,lib),others=lib.plans.filter(x=>x!==act),fin=others.filter(x=>S.prog[x.id]&&S.prog[x.id].week>weeksOf(x)).length;
+  h+=`<div class="sec">Meu treino</div><div class="card alist">${aitem('go','Planos de treino',`${act?'1 em andamento':'nenhum em andamento'} · ${others.length-fin} próximo${others.length-fin===1?'':'s'} · ${fin} finalizado${fin===1?'':'s'}`,'data-v="planos"')}${aitem('go','Montar um treino novo','3 perguntas e o app monta para você','data-v="montar"')}${p?aitem('go','Ajustar semana do plano',`${esc(p.name)} · semana ${Math.min(progOf(p).week,weeksOf(p))} de ${weeksOf(p)}`,'data-v="ajsemana"'):''}${aitem('go','Perfil corporal','Sexo, nascimento, altura e peso · usados nas calorias','data-v="meusdados"')}</div>`;
+  {const tp=themePref();h+=`<div class="sec">Aparência e uso</div><div class="card"><b>Tema</b><div class="seg" style="margin-top:8px">${[['light','Claro'],['dark','Escuro'],['auto','Automático']].map(([k,l])=>`<button class="${tp===k?'on':''}" data-act="setTheme" data-t="${k}">${l}</button>`).join('')}</div><p class="mu xs" style="margin:6px 2px 0">Automático segue o modo claro/escuro do celular. Vale só para este aparelho.</p>
+    <div class="sw" style="border-top:1px solid var(--s3);margin-top:12px;padding-top:12px"><span>Mostrar opções avançadas<div class="mu xs">Fases, repetições de sobra (RIR) e progressão de carga sempre abertas.</div></span><input type="checkbox" data-sf="adv" ${st.adv?'checked':''}></div></div>
+    <div class="card alist">${aitem('go','Durante o treino','Som do descanso, aviso de 5 s, tela ligada e pausa automática','data-v="treinoopts"')}</div>`}
+  if(isM){const nv=Object.keys(VID.map||{}).length;if(!VID.loaded)loadVideos();
+    h+=`<div class="sec">Área do master</div><div class="card alist">${aitem('openUsers','Usuários','Criar contas, ver treinos e editar planos')}${aitem('go','Modelos de treino','Academia e casa · base dos planos novos','data-v="modelos"')}${aitem('go','Vídeos dos exercícios',`Colar links do YouTube · ${nv} de ${Object.keys(MIDIA).length} com vídeo`,'data-v="videos"')}</div>`}
+  h+=`<div class="sec">Dados e ajuda</div><div class="card alist">${aitem('go','Backup: exportar ou importar',st.lastBackup?'Último: '+new Date(st.lastBackup).toLocaleDateString('pt-BR'):'Cópia extra dos seus dados','data-v="backup"')}${aitem('go','Ajuda e significado dos termos','','data-v="ajuda"')}${aitem('go','Créditos das fotos e textos','','data-v="creditos"')}</div>`;
+  h+=`<div class="card"><div class="mu sm">${esc(ME.email||'')}</div><div class="sm" style="margin:6px 0 10px">${syncText()}</div><button class="btn block" data-act="syncNow">Sincronizar agora</button><div style="height:8px"></div><button class="btn block" data-act="logout" style="color:var(--bad)">Sair da conta</button></div>`;
+  return h};
+VIEWS.meusdados=function(){let h=hdr('Perfil corporal','Usado nas calorias e na avaliação',true);
+  {const B=bodyOf(),r=bmrOf(B);h+=`<div class="card"><label class="f" style="margin-top:0"><span>Nome de exibição</span><input id="bfName" maxlength="80" autocomplete="name" value="${esc(ME.name||'')}" placeholder="Seu nome"></label><div class="grid2"><label class="f" style="margin-top:0"><span>Sexo</span>${sel('',[['','—'],['M','Masculino'],['F','Feminino']],B.sex,'id="bfSex"')}</label><label class="f" style="margin-top:0"><span>Nascimento (DD/MM/AAAA)</span><input id="bfBirth" data-mask="date" inputmode="numeric" maxlength="10" placeholder="dd/mm/aaaa" value="${esc(isoToBR(B.birth))}" autocomplete="bday"></label></div>
     <div class="grid2"><label class="f"><span>Altura (cm)</span><input id="bfHeight" inputmode="numeric" maxlength="3" value="${B.height??''}" placeholder="ex: 175"></label><label class="f"><span>Peso atual (kg)</span><button class="btn block" data-act="addWeight" style="padding:10px">${weightAt(B)?fnum(weightAt(B),1)+' kg · atualizar':'Registrar'}</button></label></div>
     <button class="btn pri block" data-act="saveBody" style="margin-top:4px">Salvar meus dados</button><div class="mu xs" style="margin-top:6px">Sexo, nascimento, altura e peso vêm da sua avaliação quando estiverem vazios.</div>
     <div class="sm" style="margin-top:10px">${r?`Metabolismo basal estimado: <b>${Math.round(r).toLocaleString('pt-BR')} kcal/dia</b>`:'<span class="mu">Preencha sexo, nascimento, altura e peso para calcular o metabolismo e o gasto dos treinos.</span>'}</div>
     <div class="mu xs" style="margin-top:6px">${ME.role==='master'?'Usado para estimar o gasto calórico dos treinos.':'Usado para estimar o gasto calórico dos treinos. Visível para você e para o administrador do app.'} O peso é salvo ao tocar em "Salvar" na janela de registro.</div></div>`}
-  h+=`<h3>Durante o treino</h3><p class="mu xs" style="margin:-4px 0 6px">Estas opções são salvas automaticamente ao tocar.</p><div class="card" style="padding:4px 14px"><div class="sw"><span>Som ao fim do descanso</span><input type="checkbox" data-sf="sound" ${st.sound?'checked':''}></div><div class="sw"><span>Aviso faltando 5 segundos</span><input type="checkbox" data-sf="warn5" ${st.warn5!==false?'checked':''}></div><div class="sw"><span>Manter tela ligada</span><input type="checkbox" data-sf="wake" ${st.wake?'checked':''}></div>
+  return h};
+VIEWS.treinoopts=function(){const st=S.settings;let h=hdr('Durante o treino','Salvo automaticamente ao tocar',true);
+  h+=`<div class="card" style="padding:4px 14px"><div class="sw"><span>Som ao fim do descanso</span><input type="checkbox" data-sf="sound" ${st.sound?'checked':''}></div><div class="sw"><span>Aviso faltando 5 segundos</span><input type="checkbox" data-sf="warn5" ${st.warn5!==false?'checked':''}></div><div class="sw"><span>Manter tela ligada</span><input type="checkbox" data-sf="wake" ${st.wake?'checked':''}></div>
     <div class="sw"><span>Pausar o cronômetro do treino ao sair da tela<div class="mu xs">Pausa ao bloquear o celular <b>e</b> ao trocar de app (o iPhone não diferencia os dois). Você também pode pausar manualmente no ⏸.</div></span><input type="checkbox" data-sf="autoPause" ${st.autoPause?'checked':''}></div>
     <div style="padding:10px 0"><button class="btn block" data-act="testSound">🔊 Testar alertas sonoros</button><div class="mu xs" style="margin-top:6px">Se não ouvir: aumente o volume e confira se o iPhone não está no modo silencioso.</div></div></div>`;
-  h+=`<h3>Conta</h3><div class="card"><div class="b">${esc(ME.name||'')}${ME.role==='master'?' <span class="pill" style="background:var(--ac);color:#fff">master</span>':''}</div><div class="mu sm">${esc(ME.email||'')}</div><div class="sm" style="margin:8px 0">${syncText()}</div>
-    <button class="btn block" data-act="syncNow">Sincronizar agora</button><div style="height:8px"></div><button class="btn block" data-act="logout" style="color:var(--bad)">Sair da conta</button></div>`;
-  h+=`<h3>Backup extra</h3><div class="card"><p class="sm mu" style="margin-top:0">Seus dados ficam na nuvem e neste aparelho. O arquivo é uma cópia extra.${st.lastBackup?` Último: ${new Date(st.lastBackup).toLocaleDateString('pt-BR')}.`:''}</p>
+  return h};
+VIEWS.ajsemana=function(){const p=myActive();let h=hdr('Ajustar semana','Só para corrigir',true);if(!p)return h+'<div class="empty">Sem plano ativo.</div>';
+  if(p){const w=progOf(p).week,N=weeksOf(p);h+=`<div class="card"><div class="b">${esc(p.name)}</div><p class="sm mu">A semana avança sozinha quando você completa todos os treinos. Use os botões só para corrigir.</p>
+    <div class="row"><button class="btn smb" data-act="shiftWeek" data-d="-1">◀ Voltar</button><div class="sp" style="text-align:center"><b>Semana ${Math.min(w,N+1)}</b><div class="mu xs">${w<=N?esc(phaseAt(p,w).name):'concluído'}</div></div><button class="btn smb" data-act="shiftWeek" data-d="1">Avançar ▶</button></div></div>`}
+  return h};
+VIEWS.backup=function(){const st=S.settings;let h=hdr('Backup','Cópia extra dos seus dados',true);
+  h+=`<div class="card"><p class="sm mu" style="margin-top:0">Seus dados ficam na nuvem e neste aparelho. O arquivo é uma cópia extra.${st.lastBackup?` Último: ${new Date(st.lastBackup).toLocaleDateString('pt-BR')}.`:''}</p>
     <button class="btn block" data-act="exportJSON">Exportar backup (.json)</button><div style="height:8px"></div><button class="btn block" data-act="importJSON">Importar backup</button><div style="height:8px"></div><button class="btn block" data-act="exportCSV">Exportar histórico (.csv / Excel)</button></div>`;
   return h};
+VIEWS.creditos=function(){return hdr('Créditos','Fotos e textos dos exercícios',true)+`<div class="card"><p class="sm" style="margin-top:0"><b>Fotos dos exercícios:</b> Free Exercise DB (github.com/yuhonas/free-exercise-db), domínio público (licença Unlicense).</p><p class="sm"><b>Passo a passo, “evite” e textos do app:</b> escritos para o app Treino.</p><p class="sm" style="margin-bottom:0"><b>Vídeos:</b> links adicionados pelo master; o conteúdo pertence aos respectivos autores e é exibido pelo player do YouTube.</p></div>`};
+
 function share(name,text,type){const blob=new Blob([text],{type});let file=null;try{file=new File([blob],name,{type})}catch(e){}
   if(file&&navigator.canShare&&navigator.canShare({files:[file]})){navigator.share({files:[file],title:name}).catch(()=>{});return}
   const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},1500)}
@@ -953,12 +970,12 @@ VIEWS.treinos=function(){const p=myActive();
     <div style="height:8px"></div><button class="btn block" data-act="go" data-v="plan" data-id="${p.id}">⚙️ Configurar plano${ADV()?' (fases e cargas)':''}</button>`;
   return h};
 VIEWS.avaliacao=function(){const isM=ME.role==='master';
-  let h=hdr('Avaliação',isM?'Avaliações de todos os alunos':'Medidas, composição corporal e evolução',false,syncBadge());
-  if(isM)h+=`<div class="seg" style="margin-bottom:10px">${[['rec','Recebidas'],['mine','Minha']].map(([k,l])=>`<button class="${AVT===k?'on':''}" data-act="avTab" data-t="${k}">${l}</button>`).join('')}</div>`;
+  let h=hdr('Avaliação',isM&&AVT==='rec'?'Avaliações de todos os alunos':'Medidas, composição corporal e evolução',false,syncBadge());
+  if(isM)h+=`<div class="seg" style="margin-bottom:10px">${[['mine','Minhas'],['rec','Alunos']].map(([k,l])=>`<button class="${AVT===k?'on':''}" data-act="avTab" data-t="${k}">${l}</button>`).join('')}</div>`;
   if(isM&&AVT==='rec')return h+(window.AV&&VIEWS.avall?VIEWS.avall({embed:true}):'');
   h+=(window.AV&&VIEWS.aval?VIEWS.aval({embed:true}):'');
   return h};
-let AVT='rec';
+let AVT='mine';
 VIEWS.weights=function(){const B=bodyOf(),w=weightsSorted(B).reverse();let h=hdr('Peso corporal',w.length+' registro(s)',true);
   h+=`<div class="card">${weightChart(B)}</div><div class="card" style="padding:4px 14px">${w.map((x,i)=>{const prev=w[i+1];const d=prev?r2(x.kg-prev.kg):null;return`<div class="li"><span class="pill" style="min-width:52px;text-align:center">${dshort(x.date)}</span><div class="t"><b>${fnum(x.kg,1)} kg</b><span class="mu sm">${d!=null?(d>0?'+':'')+fnum(d,1)+' kg':'primeiro registro'}</span></div><button class="ib" data-act="delWeight" data-date="${x.date}" style="color:var(--bad)">✕</button></div>`}).join('')}</div>
   <button class="btn pri block" data-act="addWeight">+ Registrar peso</button>`;return h};
@@ -1171,21 +1188,17 @@ function rel(ts){if(!ts)return'nunca';const d=(Date.now()-Date.parse(ts))/864e5;
 VIEWS.users=function(){if(!USERS){loadUsers();return hdr('Usuários','',true)+'<div class="empty">Carregando…</div>'}
   let h=hdr('Usuários',USERS.list?USERS.list.length+' conta(s)':'',true,'<button class="btn smb" data-act="reloadUsers">↻</button>');
   if(USERS.err)return h+`<div class="card" style="color:var(--bad)">${esc(USERS.err)}</div>`;
-  h+=`<button class="btn pri block" data-act="newUser">+ Novo usuário</button><div class="card" style="padding:4px 14px;margin-top:12px">${USERS.list.map(u=>`<div class="li tap" data-act="go" data-v="user" data-id="${u.id}"><span class="pill" style="min-width:12px;background:${u.active?'var(--ok)':'var(--s3)'};padding:5px"></span><div class="t"><b>${esc(u.name)}${u.role==='master'?' · master':''}</b><span class="mu sm">${u.workouts} treino(s) · último: ${u.last_workout?dshort(String(u.last_workout)):'—'} · visto ${rel(u.last_seen_at)}${u.active?'':' · <span style="color:var(--bad)">desativado</span>'}</span></div><span class="mu">›</span></div>`).join('')}</div>`;
+  h+=`<button class="btn pri block" data-act="newUser">+ Novo usuário</button><div class="card list" style="margin-top:12px">${USERS.list.map(u=>`<button class="li2 ${u.active?'':'off'}" data-act="go" data-v="user" data-id="${u.id}"><span class="av sm">${esc(initials(u.name))}</span><span class="t"><b>${esc(u.name)}${u.role==='master'?' <span class="tag">master</span>':''}</b><span class="mu sm">${u.active?`Último treino: ${u.last_workout?dshort(String(u.last_workout)):'—'} · ${u.workouts} treino${u.workouts===1?'':'s'} · visto ${rel(u.last_seen_at)}`:'<span style="color:var(--bad)">Desativado</span>'}</span></span><span class="mu">›</span></button>`).join('')}</div>`;
   return h};
 VIEWS.user=function({id}){const u=USERS&&USERS.list&&USERS.list.find(x=>x.id===id);if(!u){loadUsers();return hdr('Usuário','',true)+'<div class="empty">Carregando…</div>'}
   const me=u.id===ME.id;
-  let h=hdr(u.name,esc(u.email),true);
+  let h=`<div class="hd prof"><button class="bk" data-act="back" aria-label="Voltar">‹</button><span class="av">${esc(initials(u.name))}</span><div class="sp" style="min-width:0"><h1>${esc(u.name)}</h1><div class="mu sm">${esc(u.email)} · <b style="color:${u.active?'var(--ok)':'var(--bad)'}">${u.active?'ativo':'desativado'}</b></div></div></div>`;
   h+=`<div class="stat"><div><b>${u.workouts}</b><span>treinos</span></div><div><b>${u.last_workout?dshort(String(u.last_workout)):'—'}</b><span>último treino</span></div><div><b style="font-size:15px">${rel(u.last_seen_at)}</b><span>visto no app</span></div></div>`;
   if(!UB[id]){UB[id]={loading:true};SB.from('user_docs').select('state').eq('user_id',id).maybeSingle().then(({data})=>{UB[id]=(data&&data.state&&data.state.body)||{};const t=topV();if(t&&(t.view==='user'||t.view==='uhist')&&t.params.id===id)render()})}
   const UBd=UB[id];if(UBd&&!UBd.loading)h+=`<h3>Perfil corporal</h3><div class="card">${(UBd.weights&&UBd.weights.length)||UBd.height?bodySummary(UBd)+(weightsSorted(UBd).length>1?'<div style="height:8px"></div>'+weightChart(UBd):''):'<div class="mu sm">Ainda não preenchido por ele.</div>'}</div>`;
   h+=`<div class="card"><div class="row"><span class="sp">Status</span><b style="color:${u.active?'var(--ok)':'var(--bad)'}">${u.active?'Ativo':'Desativado'}</b></div><div class="row" style="margin-top:6px"><span class="sp">Planos</span><b>${u.has_program?'sim':'nenhum ainda'}</b></div><div class="row" style="margin-top:6px"><span class="sp">Criado em</span><span>${new Date(u.created_at).toLocaleDateString('pt-BR')}</span></div></div>`;
-  if(!me)h+=`<button class="btn pri block" data-act="manageProg" data-id="${u.id}">Ver / montar planos</button><div style="height:8px"></div>
-    ${myActive()?`<button class="btn block" data-act="copyProg" data-id="${u.id}">Enviar uma cópia do meu plano ativo</button><div style="height:8px"></div>`:''}
-    <button class="btn block" data-act="avOpenUser" data-id="${u.id}">📋 Avaliações do aluno</button><div style="height:8px"></div>
-    ${MASTER_HISTORY?`<button class="btn block" data-act="go" data-v="uhist" data-id="${u.id}">Ver histórico (somente leitura)</button><div style="height:8px"></div>`:''}`;
-  h+=`<button class="btn block" data-act="renameUser" data-id="${u.id}">Alterar nome</button><div style="height:8px"></div>`;
-  if(!me)h+=`<button class="btn block" data-act="pwUser" data-id="${u.id}">Redefinir senha</button><div style="height:8px"></div><button class="btn block" data-act="toggleUser" data-id="${u.id}" style="color:${u.active?'var(--bad)':'var(--ok)'}">${u.active?'Desativar usuário':'Reativar usuário'}</button>`;
+  if(!me)h+=`<div class="ubig">${[['manageProg','Editar planos',''],['avOpenUser','Avaliações',''],['go','Histórico de treinos',MASTER_HISTORY?'data-v="uhist"':'disabled']].concat(myActive()?[['copyProg','Enviar cópia do meu plano','']]:[]).map(([a,l,x])=>`<button class="btn" data-act="${a}" data-id="${u.id}" ${x}>${l}</button>`).join('')}</div>`;
+  h+=`<div class="row wrap" style="margin-top:8px"><button class="btn smb sp" data-act="renameUser" data-id="${u.id}">Alterar nome</button>${me?'':`<button class="btn smb sp" data-act="pwUser" data-id="${u.id}">Redefinir senha</button><button class="btn smb sp" data-act="toggleUser" data-id="${u.id}" style="color:${u.active?'var(--bad)':'var(--ok)'}">${u.active?'Desativar':'Reativar'}</button>`}</div>`;
   return h};
 const UH={},UB={};
 VIEWS.uhist=function({id}){const u=USERS&&USERS.list&&USERS.list.find(x=>x.id===id);let h=hdr('Histórico',esc(u?u.name:''),true);
@@ -1336,6 +1349,34 @@ document.addEventListener('change',ev=>{const t=ev.target,d=t.dataset;
   }
 })();
 if(navigator.storage&&navigator.storage.persist)navigator.storage.persist().catch(()=>{});
+/* ---------- v4: vídeos dos exercícios (links colados pelo master) ----------
+   Guardados como um registro da tabela workout_templates (id 'videos-exercicios'): todos os usuários ativos leem,
+   só o master grava. Não exige mudança no banco. data = {map:{<id do catálogo>: <url>}} */
+const VID={map:{},loaded:false,loading:false};const VID_ID='videos-exercicios';
+async function loadVideos(){if(!SB||VID.loading||VID.loaded)return;VID.loading=true;try{const{data,error}=await SB.from('workout_templates').select('data').eq('id',VID_ID).maybeSingle();if(!error){VID.map=(data&&data.data&&data.data.map)||{};VID.loaded=true;render()}}finally{VID.loading=false}}
+async function saveVideos(){const{error}=await SB.from('workout_templates').upsert({id:VID_ID,data:{map:VID.map},updated_by:ME.id,updated_at:new Date().toISOString()});if(error)throw new Error(friendlyErr(error))}
+function ytId(u){const m=String(u||'').match(/(?:youtube\.com\/(?:watch\?(?:.*&)?v=|shorts\/|embed\/|live\/)|youtu\.be\/)([A-Za-z0-9_-]{11})/);return m?m[1]:null}
+function vidOk(u){return/^https:\/\//i.test(String(u||''))&&(ytId(u)||/\.(mp4|webm|mov)(\?|$)/i.test(u))}
+function videoOf(k){if(!k)return null;if(!VID.loaded&&ME)loadVideos();const u=VID.map[k];return vidOk(u)?u:null}
+function videoHTML(u){const id=ytId(u);if(id)return`<div class="vbox"><iframe src="https://www.youtube-nocookie.com/embed/${id}?rel=0&playsinline=1" title="Vídeo de demonstração" loading="lazy" allow="accelerometer; encrypted-media; gyroscope; picture-in-picture; fullscreen" allowfullscreen referrerpolicy="strict-origin-when-cross-origin"></iframe></div>`;
+  return`<div class="vbox"><video src="${esc(u)}" controls playsinline preload="metadata"></video></div>`}
+VIEWS.videos=function(){if(ME.role!=='master')return hdr('Vídeos','',true)+'<div class="empty">Apenas o master edita os vídeos.</div>';
+  if(!VID.loaded)loadVideos();const all=CATALOG.filter(c=>MIDIA[c.id]),n=all.filter(c=>VID.map[c.id]).length;
+  const q=norm(VQ.q).split(/\s+/).filter(Boolean),list=all.filter(c=>(VQ.f==='com'?VID.map[c.id]:VQ.f==='sem'?!VID.map[c.id]:VQ.f==='semfoto'?!MIDIA[c.id].f:true)&&q.every(t=>norm(c.name+' '+c.grp).includes(t)));
+  let h=hdr('Vídeos dos exercícios',`${n} de ${all.length} com vídeo`,true);
+  h+=`<p class="mu sm" style="margin:0 2px 8px">Cole o link de um vídeo do YouTube (ou de um arquivo .mp4). Ele aparece para todos os usuários no detalhe do exercício.</p>
+    <label class="srch"><span class="sr">Buscar exercício</span><input id="vidQ" placeholder="Buscar exercício…" value="${esc(VQ.q)}" autocomplete="off"></label>
+    <div class="chips" style="margin-top:8px">${[['','Todos'],['sem','Sem vídeo'],['com','Com vídeo'],['semfoto','Sem foto']].map(([k,l])=>`<button class="chip ${VQ.f===k?'on':''}" data-act="vidF" data-f="${k}">${l}</button>`).join('')}</div>
+    <div id="vidList">${vidList(list)}</div>`;
+  return h};
+const VQ={q:'',f:''};
+function vidList(list){return list.length?`<div class="card list">${list.slice(0,150).map(c=>{const u=fotoDe(c.id,0),has=!!VID.map[c.id];return`<button class="li2" data-act="vidEdit" data-cid="${esc(c.id)}">${u?`<img class="thumb" src="${u}" alt="" loading="lazy" style="width:44px;height:44px">`:`<span class="thumb ph" style="width:44px;height:44px">${KIND_ICON[c.kind]}</span>`}<span class="t"><b>${esc(c.name)}</b><span class="${has?'ok':'mu'} sm">${has?'▶ com vídeo':'sem vídeo · tocar para adicionar'}</span></span><span class="mu">›</span></button>`}).join('')}</div>${list.length>150?`<p class="mu sm">+${list.length-150} — refine a busca</p>`:''}`:'<div class="empty">Nada encontrado.</div>'}
+ACT.vidF=d=>{VQ.f=d.f;render()};
+ACT.vidEdit=d=>{const c=CATALOG.find(x=>x.id===d.cid);if(!c)return;const cur=VID.map[c.id]||'';
+  modal('Vídeo: '+esc(c.name),`<label class="f" style="margin-top:0"><span>Link do vídeo (YouTube ou .mp4)</span><input id="vidUrl" inputmode="url" autocomplete="off" placeholder="https://www.youtube.com/watch?v=…" value="${esc(cur)}"></label><div id="vidPrev">${cur&&vidOk(cur)?videoHTML(cur):''}</div><p class="mu xs">Dica: no YouTube, toque em Compartilhar › Copiar link e cole aqui. Prefira vídeos curtos, mostrando a execução de lado.</p>`,
+    [{label:'Cancelar'}].concat(cur?[{label:'Remover',cls:'danger',keep:true,fn:busy(async()=>{const old=VID.map[c.id];delete VID.map[c.id];try{await saveVideos();$('#modal').hidden=true;toast('Vídeo removido');render()}catch(e){VID.map[c.id]=old;toast(e.message)}})}]:[]).concat([{label:'Salvar',cls:'pri',keep:true,fn:busy(async()=>{const u=$('#vidUrl').value.trim();if(!vidOk(u)){toast('Link inválido: use um link do YouTube ou de um arquivo .mp4 (https)');return}const old=VID.map[c.id];VID.map[c.id]=u;try{await saveVideos();$('#modal').hidden=true;toast('Vídeo salvo para todos');render()}catch(e){if(old)VID.map[c.id]=old;else delete VID.map[c.id];toast(e.message)}})}]))};
+document.addEventListener('input',ev=>{const t=ev.target;if(t.id==='vidQ'){VQ.q=t.value;const all=CATALOG.filter(c=>MIDIA[c.id]);const q=norm(VQ.q).split(/\s+/).filter(Boolean);const el=$('#vidList');if(el)el.innerHTML=vidList(all.filter(c=>(VQ.f==='com'?VID.map[c.id]:VQ.f==='sem'?!VID.map[c.id]:VQ.f==='semfoto'?!MIDIA[c.id].f:true)&&q.every(x=>norm(c.name+' '+c.grp).includes(x))))}
+  else if(t.id==='vidUrl'){const p=$('#vidPrev');if(p)p.innerHTML=vidOk(t.value.trim())?videoHTML(t.value.trim()):''}});
 /* v4: edição do treino */
 ACT.seOpen=d=>{SE.open=SE.open===d.eid?'':d.eid;render()};
 ACT.seSets=d=>{const p=planOf(d),f=exIn(p,d.eid);if(!f)return;const e=f.e;e.sets=Math.max(1,Math.min(12,(+e.sets||1)+(+d.d)));psave();render()};
