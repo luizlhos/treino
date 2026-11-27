@@ -527,7 +527,7 @@ function sessionsFromRaw(t,p){if(!t)return[];
     it.sets=sets;it.reps=reps;it.restSec=rest;it.rest=rest>=120?(rest/60)+' min':rest+' s';it.rir=it.kind==='time'||c.cat==='Core'?'':'RIR 2';return it}})}))}
 
 "use strict";
-const APP_VERSION='3.15.0';
+const APP_VERSION='3.16.0';
 /* ---------- tema (preferência do aparelho) ---------- */
 const THEME_KEY='treino.theme';const MQ_DARK=window.matchMedia?matchMedia('(prefers-color-scheme: dark)'):null;
 function themePref(){try{return localStorage.getItem(THEME_KEY)||'dark'}catch(e){return'dark'}}
@@ -1349,7 +1349,7 @@ VIEWS.montar=function(prm){const uid=prm.uid||'';if(!WZ||WZ.uid!==uid||WZ.aid!==
 function firstSteps(){const m=window.AV&&AV.mine?AV.mine():null,d1=!!(m&&m.list&&m.list.length);
   const it=(n,t,d,st,btn)=>`<div class="fs-i ${st}"><span class="fs-n">${st==='done'?'✓':n}</span><div class="sp"><b>${t}</b><div class="mu sm">${d}</div>${btn||''}</div></div>`;
   return`<div class="card"><div class="row"><b class="sp">Seus primeiros passos</b><span class="ac sm b">${d1?1:0} de 3</span></div>
-    ${it(1,'Responder a avaliação',d1?'Pronto! O resultado fica na aba Avaliação.':'Saúde, hábitos e objetivo. Leva uns 8 minutos.',d1?'done':'now',d1?'':'<button class="btn block" data-act="avNew" style="margin-top:8px">Responder agora</button>')}
+    ${it(1,'Responder a avaliação',d1?'Pronto! O resultado fica na aba Avaliação.':'Medidas, objetivo e rotina. Leva uns 3 minutos.',d1?'done':'now',d1?'':'<button class="btn block" data-act="avNew" style="margin-top:8px">Responder agora</button>')}
     ${it(2,'Montar meu treino','3 perguntas rápidas: objetivo, dias por semana e onde você treina.',d1?'now':'next','<button class="btn pri block" data-act="go" data-v="montar" style="margin-top:8px">Montar meu treino</button><button class="btn ghost block" data-act="newPlan">Já treino: quero montar sozinho</button>')}
     ${it(3,'Fazer o primeiro treino','O app mostra cada exercício, as séries e conta o descanso para você.','next')}</div>
     ${ME.role!=='master'?'<div class="banner">ℹ️ Prefere que seu treinador monte? Ele monta pela conta dele e o treino aparece aqui sozinho.</div>':''}`}
@@ -1369,13 +1369,10 @@ VIEWS.treinos=function(){const p=myActive();
     <div style="height:8px"></div><button class="btn block" data-act="go" data-v="plan" data-id="${p.id}">⚙️ Configurar plano${ADV()?' (fases e cargas)':''}</button>`;
   return h};
 VIEWS.avaliacao=function(){const isM=ME.role==='master';
-  let h=hdr('Avaliação',isM?'Questionários e avaliações físicas':'Seu questionário e sua avaliação física',false,syncBadge());
+  let h=hdr('Avaliação',isM?'Avaliações de todos os alunos':'Medidas, composição corporal e evolução',false,syncBadge());
   if(isM)h+=`<div class="seg" style="margin-bottom:10px">${[['rec','Recebidas'],['mine','Minha']].map(([k,l])=>`<button class="${AVT===k?'on':''}" data-act="avTab" data-t="${k}">${l}</button>`).join('')}</div>`;
   if(isM&&AVT==='rec')return h+(window.AV&&VIEWS.avall?VIEWS.avall({embed:true}):'');
-  const a=anamOf(S.lib),ev=(a.evals||[]).slice().sort((x,y)=>(y.date||'').localeCompare(x.date||'')),L=ev[0];
-  h+=`<h3>Avaliação física</h3><div class="card">${L?`<div class="row"><div class="sp"><b>Última medição · ${esc(dshort?dshort(L.date):L.date)}</b><div class="mu sm">${ev.length} medição${ev.length===1?'':'ões'} registrada${ev.length===1?'':'s'}</div></div></div>`:`<div class="mu sm">${isM?'Nenhuma medição ainda.':'Seu treinador registra aqui as medidas, dobras cutâneas e bioimpedância.'}</div>`}
-    ${L||isM?`<div style="height:8px"></div><button class="btn block" data-act="anOpen">${L?'Ver avaliação física':'+ Registrar medição'}</button>`:''}</div>`;
-  h+=`<h3>Questionário</h3>`+(window.AV&&VIEWS.aval?VIEWS.aval({embed:true}):'');
+  h+=(window.AV&&VIEWS.aval?VIEWS.aval({embed:true}):'');
   return h};
 let AVT='rec';
 VIEWS.weights=function(){const B=bodyOf(),w=weightsSorted(B).reverse();let h=hdr('Peso corporal',w.length+' registro(s)',true);
@@ -1460,7 +1457,7 @@ VIEWS.ajuda=function(){
   h+=sec('📈 Progresso, Avaliação e Perfil',
     helpRow('📈','Progresso','Aba Progresso. <b>Evolução</b>: resumo da semana, peso corporal e o histórico de cargas e 1RM de cada exercício. <b>Histórico</b>: calendário com os dias treinados e a lista de treinos.')+
     helpRow('📅','Treinos','Aba Treinos: o plano atual e seus treinos (A, B, C…). Toque em um treino para ver, trocar, adicionar ou remover exercícios. Todos os planos (em andamento, próximos e finalizados) ficam em Perfil → Planos de treino.')+
-    helpRow('🩺','Avaliação','Aba Avaliação. <b>Questionário</b>: saúde, dieta e rotina, respondido por você (com análise de IMC, gasto calórico, % de gordura e água). <b>Avaliação física</b>: medidas, dobras e bioimpedância, registradas pelo seu treinador.')+
+    helpRow('🩺','Avaliação','Aba Avaliação: um único questionário com contato, medidas básicas, circunferências, dobras cutâneas e frequência cardíaca de repouso (opcionais, com instruções de como medir), objetivo, rotina e limitações. O resultado mostra IMC, gasto calórico, % de gordura, massas gorda e magra, cintura/quadril, cintura/altura, FC máxima e zonas de treino, comparando com a avaliação anterior. Na reavaliação, os dados que não mudam já vêm preenchidos. Cada pessoa vê só as próprias; o administrador vê todas.')+
     helpRow('⚡','Opções avançadas','Em Perfil. Ligue <b>Sempre mostrar opções avançadas</b> para ver fases, RIR e progressão de cargas abertas nos planos.')+
     helpRow('👤','Perfil','Planos de treino, avaliação, ajuda, aparência, perfil corporal (para as calorias), sons e alertas, conta e backup.')+
     helpRow('🌓','Aparência','Em Perfil: tema Escuro, Claro ou Automático (segue o iPhone). A escolha vale para o aparelho em que foi feita.')+
@@ -1543,7 +1540,7 @@ function viewLogin(){const last=localStorage.getItem('treino.lastEmail')||'';
    <label class="f"><span>Senha</span><input id="lgPass" type="password" autocomplete="current-password"></label>
    <div id="lgMsg" class="sm" style="color:var(--bad);min-height:20px"></div>
    <button class="btn pri block" data-act="login" id="lgBtn">Entrar</button>
-   <div style="margin-top:20px;padding-top:16px;border-top:1px solid var(--s3)"><p class="mu sm">Ainda não tem acesso?</p><button class="btn block" data-act="avOpen">📋 Fazer minha avaliação gratuita</button><button class="btn block" data-act="avOpenCode">🔑 Tenho um código</button><button class="btn ghost block" data-act="avOpenResend">Criar ou redefinir minha senha</button></div>
+   <div style="margin-top:20px;padding-top:16px;border-top:1px solid var(--s3)"><p class="mu sm">Primeiro acesso ou esqueceu a senha?</p><button class="btn block" data-act="avOpenResend">Criar ou redefinir minha senha</button></div>
    ${/^https?:/.test(SB_URL)?'':'<p class="sm" style="color:var(--bad)">Servidor não configurado.</p>'}</div>`}
 function viewDisabled(){return`<div class="login"><h1>Conta desativada</h1><p class="mu">Seu acesso foi desativado pelo administrador. Fale com ele para reativar.</p><button class="btn block" data-act="logout">Sair</button></div>`}
 async function doLogin(){const em=($('#lgEmail').value||'').trim().toLowerCase(),pw=$('#lgPass').value||'',msg=$('#lgMsg'),btn=$('#lgBtn');
@@ -1600,8 +1597,7 @@ VIEWS.user=function({id}){const u=USERS&&USERS.list&&USERS.list.find(x=>x.id===i
   h+=`<div class="card"><div class="row"><span class="sp">Status</span><b style="color:${u.active?'var(--ok)':'var(--bad)'}">${u.active?'Ativo':'Desativado'}</b></div><div class="row" style="margin-top:6px"><span class="sp">Planos</span><b>${u.has_program?'sim':'nenhum ainda'}</b></div><div class="row" style="margin-top:6px"><span class="sp">Criado em</span><span>${new Date(u.created_at).toLocaleDateString('pt-BR')}</span></div></div>`;
   if(!me)h+=`<button class="btn pri block" data-act="manageProg" data-id="${u.id}">Ver / montar planos</button><div style="height:8px"></div>
     ${myActive()?`<button class="btn block" data-act="copyProg" data-id="${u.id}">Enviar uma cópia do meu plano ativo</button><div style="height:8px"></div>`:''}
-    <button class="btn block" data-act="avOpenUser" data-id="${u.id}">📋 Questionário do cliente</button><div style="height:8px"></div>
-    <button class="btn block" data-act="anOpenUser" data-id="${u.id}">📏 Avaliação física do cliente</button><div style="height:8px"></div>
+    <button class="btn block" data-act="avOpenUser" data-id="${u.id}">📋 Avaliações do aluno</button><div style="height:8px"></div>
     ${MASTER_HISTORY?`<button class="btn block" data-act="go" data-v="uhist" data-id="${u.id}">Ver histórico (somente leitura)</button><div style="height:8px"></div>`:''}`;
   h+=`<button class="btn block" data-act="renameUser" data-id="${u.id}">Alterar nome</button><div style="height:8px"></div>`;
   if(!me)h+=`<button class="btn block" data-act="pwUser" data-id="${u.id}">Redefinir senha</button><div style="height:8px"></div><button class="btn block" data-act="toggleUser" data-id="${u.id}" style="color:${u.active?'var(--bad)':'var(--ok)'}">${u.active?'Desativar usuário':'Reativar usuário'}</button>`;
