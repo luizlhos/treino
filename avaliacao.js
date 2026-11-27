@@ -107,30 +107,20 @@
   const QMAP = Object.fromEntries(QS.concat(EXTRA).map(q => [q.k, q]));
   /* ---------- AVALIAÇÃO ÚNICA (v3.16): questionário + medidas + dobras + FC; as perguntas antigas só aparecem em avaliações anteriores ---------- */
   const MEDIR = 'Fita métrica encostada na pele, firme mas sem apertar, paralela ao chão. Meça em pé, relaxado, ao final de uma expiração normal (sem prender o ar nem encolher a barriga). Faça 2 vezes e use a média, sempre no mesmo horário.';
+  const HOW_BASIC = [['Peso', 'de manhã, em jejum, depois de ir ao banheiro, com pouca roupa e sempre na mesma balança.'], ['Altura', 'descalço, calcanhares, bumbum e costas encostados na parede, olhando para a frente.'], ['% da balança', 'só se a sua balança de bioimpedância mostrar; meça sempre nas mesmas condições (ex.: ao acordar, em jejum).'], ['FC de repouso', 'ao acordar, ainda deitado: conte os batimentos no pulso ou no pescoço por 60 segundos (ou use o relógio).']];
+  const HOW_CIRC = [['Regra geral', MEDIR], ['Pescoço', 'logo abaixo do "gogó", fita levemente inclinada para baixo na frente.'], ['Peitoral', 'na linha dos mamilos, braços soltos.'], ['Cintura', 'parte mais estreita do tronco, entre a última costela e o umbigo.'], ['Abdômen', 'na linha do umbigo, barriga relaxada.'], ['Quadril', 'parte mais larga do bumbum, pés juntos.'], ['Braço', 'dobrado a 90° e contraído, no maior volume (sempre o mesmo lado).'], ['Antebraço', 'braço estendido, mão relaxada, parte mais grossa.'], ['Coxa', 'logo abaixo da dobra do bumbum, parte mais grossa.'], ['Panturrilha', 'em pé, parte mais grossa.']];
+  const S_ = (l) => ({ l, help: '' });
   const FORM = [
-    { t: 'Você', ks: [['whatsapp', { help: 'Usado para enviar sua avaliação, seu treino e as fotos de antes e depois.' }], ['birth'], ['sex']] },
-    { t: 'Medidas básicas', ks: [
-      ['weight', { help: 'De manhã, em jejum, depois de ir ao banheiro, com pouca roupa e sempre na mesma balança.' }],
-      ['goal_weight', { req: 0, l: 'Peso meta (opcional)' }],
-      ['height', { help: 'Descalço, de costas para a parede, com calcanhares, bumbum e costas encostados, olhando para a frente.' }],
-      ['bf_scale'],
-    ] },
-    { t: 'Circunferências (opcional)', note: '📏 <b>Como medir:</b> ' + MEDIR, ks: [
-      ['neck', { help: 'Logo abaixo do "gogó" (pomo de Adão), com a fita levemente inclinada para baixo na frente. Não incline a cabeça.' }],
-      ['chest'],
-      ['waist', { help: 'Na parte mais estreita do tronco, entre a última costela e o umbigo. Barriga relaxada.' }],
-      ['abdomen', { l: 'Abdômen, na linha do umbigo (opcional)', help: 'Exatamente na linha do umbigo, com a barriga relaxada.' }],
-      ['hip', { help: 'Na parte mais larga do bumbum (glúteos), com os pés juntos.' }],
-      ['arm'], ['forearm'], ['thigh'], ['calf'],
-    ] },
-    { t: 'Dobras cutâneas (opcional)', ks: [['folds']] },
-    { t: 'Frequência cardíaca', ks: [['rhr']] },
-    { t: 'Objetivo e rotina', ks: [['goal'], ['activity'], ['train_days'], ['train_place', { l: 'Onde você treina? (opcional)' }]] },
-    { t: 'Limitações e observações', ks: [
-      ['injuries', { req: 0, l: 'Você tem lesões, dores ou limitações? (opcional)', ph: 'Ex.: dor no joelho ao agachar, lesão no ombro…' }],
-      ['notes', { l: 'Algo mais que devo saber? (opcional)', ph: 'Preferências, horários, metas com prazo…' }]] },
+    { t: 'Você', ks: [['whatsapp', { l: 'WhatsApp (com DDD)', help: '' }], ['birth', { l: 'Nascimento', help: '' }], ['sex', { l: 'Sexo' }, 1]] },
+    { t: 'Medidas', how: HOW_BASIC, ks: [['weight', S_('Peso atual')], ['height', S_('Altura')], ['goal_weight', { req: 0, l: 'Peso meta', help: '' }], ['bf_scale', S_('% gordura (balança)')], ['rhr', S_('FC de repouso')]] },
+    { t: 'Circunferências · opcional', how: HOW_CIRC, ks: [['neck', S_('Pescoço')], ['chest', S_('Peitoral')], ['waist', S_('Cintura')], ['abdomen', S_('Abdômen (umbigo)')], ['hip', S_('Quadril')], ['arm', S_('Braço contraído')], ['forearm', S_('Antebraço')], ['thigh', S_('Coxa')], ['calf', S_('Panturrilha')]] },
+    { t: 'Dobras cutâneas · opcional', ks: [['folds', {}, 1]] },
+    { t: 'Objetivo e rotina', ks: [['goal', { l: 'Objetivo' }, 1], ['activity', { l: 'Nível de atividade no dia a dia', t: 'sel' }, 1], ['train_days', { l: 'Dias de treino por semana' }], ['train_place', { l: 'Onde treina' }]] },
+    { t: 'Limitações e observações · opcional', ks: [
+      ['injuries', { req: 0, l: 'Lesões, dores ou limitações', ph: 'Ex.: dor no joelho ao agachar' }, 1],
+      ['notes', { l: 'Algo mais que devo saber?', ph: 'Preferências, horários, metas com prazo…' }, 1]] },
   ];
-  const FORM_SECTIONS = FORM.map(s => ({ t: s.t, note: s.note, qs: s.ks.map(([k, o]) => Object.assign({}, QMAP[k], o || {})) }));
+  const FORM_SECTIONS = FORM.map(s => ({ t: s.t, how: s.how, qs: s.ks.map(([k, o, full]) => Object.assign({}, QMAP[k], o || {}, full ? { full: 1 } : {}, k === 'activity' ? { opts: QMAP.activity.opts.map(([v, l, d]) => [v, l + ' — ' + d]) } : {})) }));
   const FORM_QS = FORM_SECTIONS.flatMap(s => s.qs);
   const FORM_KEYS = new Set(FORM_QS.map(q => q.k).concat(['protocol']));
   const KEEP = ['whatsapp', 'birth', 'sex', 'height', 'goal_weight', 'goal', 'activity', 'train_days', 'train_place', 'injuries', 'protocol']; // reaproveitados na reavaliação
@@ -213,6 +203,17 @@
 .av-ph img{width:100%;height:100%;object-fit:cover}
 .av-ph svg{width:46%;height:auto;opacity:.7}
 .av-ph .btn{margin-top:8px;width:100%}
+.avx{background:var(--s1);border-radius:var(--r,14px);padding:12px 12px 4px;margin:10px 0}
+.avx-h{display:flex;align-items:flex-start;justify-content:space-between;gap:8px;margin-bottom:8px}.avx-h>b{font-size:13px;text-transform:uppercase;letter-spacing:.06em;color:var(--mu);padding-top:2px}
+.avg{display:grid;grid-template-columns:1fr 1fr;gap:4px 10px}.avf{min-width:0;margin-bottom:8px}.avf.full{grid-column:1/-1}
+.avf>label{display:block;font-size:12px;color:var(--mu);margin:0 0 3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.avf>label i{font-style:normal;opacity:.7}
+.avf input,.avf select,.avf textarea{padding:9px 10px;font-size:15px;min-height:0}.avf textarea{min-height:44px}
+.avf.err input,.avf.err select,.avf.err textarea,.avf.err .avs{outline:2px solid var(--bad);border-radius:10px}.avf .av-msg{font-size:12px;margin-top:3px}
+.avs{display:grid;grid-template-columns:1fr 1fr;gap:8px}.avs .av-opt{margin:0;padding:8px 10px;align-items:center}.avs .av-opt input{margin-top:0}
+.avhow{font-size:12px;max-width:62%;text-align:right;background:none!important;padding:0!important;margin:0!important;border:0!important;box-shadow:none!important}.avhow[open]{max-width:100%;text-align:left;grid-column:1/-1}.avhow summary{cursor:pointer;color:var(--ac);font-weight:600;list-style:none}.avhow summary::-webkit-details-marker{display:none}
+.avhow>div{margin-top:6px;line-height:1.4;color:var(--tx)}
+.avx-h:has(.avhow[open]){flex-wrap:wrap}.avx-h:has(.avhow[open]) .avhow{flex-basis:100%}
+.avf .av-fd{margin:0;padding:10px 12px}.avf .av-fd summary{font-size:15px}.avf .av-fd .grid2{gap:6px 10px}.avf .av-fd label.f{margin-top:6px}
 .av-fd summary{cursor:pointer;font-weight:600;color:var(--ac)}
 .av-note{background:var(--s2);border-left:4px solid var(--ac);border-radius:10px;padding:10px 12px;font-size:13px;margin:10px 0}
 .av-top{display:flex;gap:10px;align-items:center;margin:8px 0 4px}
@@ -257,6 +258,16 @@ html[data-theme=light] .av-q{box-shadow:0 1px 2px rgba(16,24,40,.06)}
     return `<div class="av-q" id="avc_${q.k}" data-q="${q.k}" ${hidden ? 'hidden' : ''}><div class="t"><span class="av-n">${n}</span><span>${esc(q.l)}</span></div>${body}${q.help ? `<div class="av-help">${esc(q.help)}</div>` : ''}<div class="av-msg" id="avm_${q.k}" hidden></div></div>`;
   }
 
+  function cellHtml(q, val, A) {
+    const id = 'av_' + q.k, v = val == null ? '' : val, opt = !q.req && !/opcional/.test(q.l) ? ' <i>opcional</i>' : '';
+    let body = '';
+    if (q.t === 'radio2') body = `<div class="avs">${q.opts.map(([o, l]) => `<label class="av-opt ${String(o) === String(v) ? 'on' : ''}"><input type="radio" name="${id}" value="${esc(o)}" ${String(o) === String(v) ? 'checked' : ''}><span>${esc(l)}</span></label>`).join('')}</div>`;
+    else if (q.t === 'folds') return `<div class="avf full" id="avc_folds">${qHtml(q, val, '', A).replace(/^<div class="av-q"[^>]*><div class="t">.*?<\/div>/, '<div>')}</div>`;
+    else body = qHtml(q, val, '', A).replace(/^[\s\S]*?<\/span><\/div>/, '').replace(/<div class="av-help">[\s\S]*?<\/div>/, '').replace(/<div class="av-msg"[\s\S]*$/, '');
+    return `<div class="avf ${q.full ? 'full' : ''}" id="avc_${q.k}"><label for="${id}">${esc(q.l)}${opt}</label>${body}<div class="av-msg" id="avm_${q.k}" hidden></div></div>`;
+  }
+  function howHtml(list) { return `<details class="avhow"><summary>📏 Como medir</summary>${list.map(([l, t]) => `<div><b>${esc(l)}:</b> ${esc(t)}</div>`).join('')}</details>`; }
+
   function formHtml(mode, ctx) {
     const D = AV.draft, A = D.a;
     let n = 0, h = '';
@@ -265,11 +276,15 @@ html[data-theme=light] .av-q{box-shadow:0 1px 2px rgba(16,24,40,.06)}
       h += `<div class="av-q" id="avc_email"><div class="t"><span class="av-n">${++n}</span><span>E-mail</span></div><input id="av_email" type="email" inputmode="email" autocomplete="email" autocapitalize="off" maxlength="254" value="${esc(D.email)}"><div class="av-help">Enviaremos para este e-mail um código para você criar sua senha e ver sua análise.</div><div class="av-msg" id="avm_email" hidden></div></div>`;
     }
     if (mode !== 'public') {
-      h += `<div class="av-q" id="avc_name"><div class="t"><span class="av-n">${++n}</span><span>${mode === 'master' ? 'Nome do aluno' : 'Seu nome'}</span></div><input id="av_name" autocomplete="name" maxlength="80" value="${esc(D.name)}"><div class="av-help">É o nome de exibição no app${mode === 'master' ? ' para este aluno' : ''}. Alterar aqui também altera no Perfil.</div><div class="av-msg" id="avm_name" hidden></div></div>`;
+      h += `<div class="avx" style="padding-bottom:10px"><div class="avf" id="avc_name"><label for="av_name">${mode === 'master' ? 'Nome do aluno' : 'Seu nome'}</label><input id="av_name" autocomplete="name" maxlength="80" value="${esc(D.name)}"><div class="av-msg" id="avm_name" hidden></div></div></div>`;
     }
-    for (const s of FORM_SECTIONS) {
-      h += `<div class="av-sec">${esc(s.t)}</div>${s.note ? `<div class="av-note" style="margin-top:4px">${s.note}</div>` : ''}`;
+    if (mode === 'public') for (const s of SECTIONS) {
+      h += `<div class="av-sec">${esc(s.t)}</div>`;
       for (const q of s.qs) { const hide = needF(q) && A.sex !== 'F'; h += qHtml(q, A[q.k], hide ? '' : ++n, A); }
+    }
+    else for (const s of FORM_SECTIONS) {
+      const so = /opcional/.test(s.t);
+      h += `<div class="avx"><div class="avx-h"><b>${esc(s.t)}</b>${s.how ? howHtml(s.how) : ''}</div><div class="avg">${s.qs.map(q => cellHtml(so ? Object.assign({}, q, { req: 1 }) : q, A[q.k], A)).join('')}</div></div>`;
     }
     const who = CFG.CONTROLLER ? esc(CFG.CONTROLLER) : 'o profissional responsável pelo seu acompanhamento';
     const consentTxt = mode === 'master'
