@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="theme-color" content="#0e1014">
+<meta name="theme-color" content="#f3f4f7">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -537,10 +537,10 @@ function sessionsFromRaw(t,p){if(!t)return[];
     it.sets=sets;it.reps=reps;it.restSec=rest;it.rest=rest>=120?(rest/60)+' min':rest+' s';it.rir=it.kind==='time'||c.cat==='Core'?'':'RIR 2';return it}})}))}
 
 "use strict";
-const APP_VERSION='3.17.0';
+const APP_VERSION='3.17.1';
 /* ---------- tema (preferência do aparelho) ---------- */
 const THEME_KEY='treino.theme';const MQ_DARK=window.matchMedia?matchMedia('(prefers-color-scheme: dark)'):null;
-function themePref(){try{return localStorage.getItem(THEME_KEY)||'dark'}catch(e){return'dark'}}
+function themePref(){try{return localStorage.getItem(THEME_KEY)||'light'}catch(e){return'light'}}
 function applyTheme(){const p=themePref(),t=p==='auto'?(MQ_DARK&&!MQ_DARK.matches?'light':'dark'):p;document.documentElement.dataset.theme=t;const m=document.querySelector('meta[name="theme-color"]');if(m)m.setAttribute('content',t==='light'?'#f3f4f7':'#0e1014')}
 applyTheme();if(MQ_DARK&&MQ_DARK.addEventListener)MQ_DARK.addEventListener('change',()=>{if(themePref()==='auto')applyTheme()});
 const SB_URL='https://zmiupzagkipjyaabzihx.supabase.co',SB_KEY='sb_publishable_G8TxNzbpzE_llnFnk5cXQg_4tCRcPDe',MASTER_HISTORY=true;
