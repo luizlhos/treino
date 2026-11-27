@@ -1,4 +1,4 @@
-const APP_VERSION='4.0.0-alpha.4';
+const APP_VERSION='4.0.0-alpha.5';
 /* ---------- tema (preferência do aparelho) ---------- */
 const THEME_KEY='treino.theme';const MQ_DARK=window.matchMedia?matchMedia('(prefers-color-scheme: dark)'):null;
 function themePref(){try{return localStorage.getItem(THEME_KEY)||'light'}catch(e){return'light'}}
@@ -414,11 +414,11 @@ VIEWS.sessedit=function({id,pid}){const p=planById(pid),s=sessIn(p,id);if(!s)ret
   const a=`data-sid="${s.id}" data-pid="${p.id}"`,w=U()?1:clampW(progOf(p).week,p),X=s.exercises;
   let h=hdr('Editar '+(s.name||'treino'),'Salva automaticamente',true,`<button class="btn pri smb" data-act="back">Concluir</button>`);
   h+=`<label class="f" style="margin-top:0"><span>Nome do treino</span><input data-pf="name" ${a} value="${esc(s.name)}"></label>`;
-  if(X.length)h+=`<p class="mu sm" style="margin:10px 2px 4px">Use ↑ ↓ para mudar a ordem. Toque no exercício para ajustar.</p>`;
-  h+=`<div class="card list">${X.length?'':'<div class="li mu sm">Nenhum exercício ainda.</div>'}`;
+  if(X.length)h+=`<p class="mu sm" style="margin:10px 2px 4px">Segure o ☰ e arraste para mudar a ordem. Toque no exercício para ajustar.</p>`;
+  h+=`<div class="card list" id="selist" ${a}>${X.length?'':'<div class="li mu sm">Nenhum exercício ainda.</div>'}`;
   X.forEach((e,i)=>{const ch=chainAt(X,i),open=SE.open===e.id,k=midiaKey(e),u=k&&fotoDe(k,0),ea=`data-eid="${e.id}" data-pid="${p.id}"`;
     if(i){const lk=X[i-1].link;h+=lk?`<div class="lk on">${chainLabel(chainAt(X,i-1).len).split(',')[0]} · <button class="lnkm" data-act="linkEx" ${a} data-i="${i-1}">separar</button></div>`:`<div class="lk"><button class="lnkm" data-act="linkEx" ${a} data-i="${i-1}">+ juntar em dupla</button></div>`}
-    h+=`<div class="eitem ${open?'open':''} ${ch.len>1?'inch':''}"><div class="erow"><div class="ord"><button class="ib" data-act="moveEx" ${a} data-i="${i}" data-d="-1" aria-label="Subir" ${i?'':'disabled'}>↑</button><button class="ib" data-act="moveEx" ${a} data-i="${i}" data-d="1" aria-label="Descer" ${i<X.length-1?'':'disabled'}>↓</button></div><button class="li2" data-act="seOpen" data-eid="${e.id}">${u?`<img class="thumb" src="${u}" alt="" loading="lazy" style="width:44px;height:44px">`:`<span class="thumb ph" style="width:44px;height:44px">${KIND_ICON[e.kind]||'🏋️'}</span>`}<span class="t"><b>${esc(e.name)}</b><span class="mu sm">${exTargetTxt(e,p,w)}</span></span><span class="mu">${open?'▴':'▾'}</span></button></div>`;
+    h+=`<div class="eitem ${open?'open':''} ${ch.len>1?'inch':''}" data-i="${i}"><div class="erow"><span class="drag" data-drag="${i}" role="button" aria-label="Arrastar ${esc(e.name)} para mudar a ordem" title="Arraste para mudar a ordem">☰</span><button class="li2" data-act="seOpen" data-eid="${e.id}">${u?`<img class="thumb" src="${u}" alt="" loading="lazy" style="width:44px;height:44px">`:`<span class="thumb ph" style="width:44px;height:44px">${KIND_ICON[e.kind]||'🏋️'}</span>`}<span class="t"><b>${esc(e.name)}</b><span class="mu sm">${exTargetTxt(e,p,w)}</span></span><span class="mu">${open?'▴':'▾'}</span></button></div>`;
     if(open){
       if(e.kind==='load'||e.kind==='bw'||e.kind==='time'){const rs=+e.restSec||90;const opts=REST_OPTS.some(o=>o[0]===rs)?REST_OPTS:REST_OPTS.concat([[rs,restTxt({restSec:rs})]]);
         h+=`<div class="grid3"><div class="f"><span>Séries</span><div class="step"><button class="ib" data-act="seSets" ${ea} data-d="-1" aria-label="Menos séries">−</button><b>${e.sets||1}</b><button class="ib" data-act="seSets" ${ea} data-d="1" aria-label="Mais séries">+</button></div></div><label class="f"><span>${e.kind==='time'?'Segundos':'Repetições'}</span><input data-ef="reps" ${ea} value="${esc(e.reps||'')}" placeholder="ex: 8-12"></label><label class="f"><span>Descanso</span>${sel('',opts,rs,`data-ef="restSec" ${ea}`)}</label></div>`;
@@ -1324,6 +1324,21 @@ if(navigator.storage&&navigator.storage.persist)navigator.storage.persist().catc
 ACT.seOpen=d=>{SE.open=SE.open===d.eid?'':d.eid;render()};
 ACT.seSets=d=>{const p=planOf(d),f=exIn(p,d.eid);if(!f)return;const e=f.e;e.sets=Math.max(1,Math.min(12,(+e.sets||1)+(+d.d)));psave();render()};
 document.addEventListener('change',ev=>{const t=ev.target,d=t.dataset;if(d.ef==='restSec'){try{const f=exIn(planOf(d),d.eid);if(f)f.e.rest=''}catch(e){}}},true);
+/* v4: arrastar ☰ para reordenar exercícios na edição do treino */
+function seMove(X,i,k){if(i===k||i<0||k<0||i>=X.length||k>=X.length)return false;
+  if(X[i-1])delete X[i-1].link;delete X[i].link;const [it]=X.splice(i,1);X.splice(k,0,it);if(X[k-1])delete X[k-1].link;return true}
+(function(){let D=null;
+  const items=()=>[...document.querySelectorAll('#selist .eitem')];
+  function auto(){if(!D)return;const y=D.y;if(y<90)scrollBy(0,-12);else if(y>innerHeight-130)scrollBy(0,12);D.raf=requestAnimationFrame(auto);place()}
+  function place(){if(!D)return;const dy=D.y-D.y0+(scrollY-D.sy);D.el.style.transform=`translateY(${dy}px)`;const mid=D.r.top+D.r.height/2+dy-(scrollY-D.sy);let k=D.i;
+    D.others.forEach(o=>{const c=o.r.top+o.r.height/2-(scrollY-D.sy);let t=0;if(o.i>D.i&&mid>c){t=-D.r.height;k=Math.max(k,o.i)}else if(o.i<D.i&&mid<c){t=D.r.height;k=Math.min(k,o.i)}o.el.style.transform=t?`translateY(${t}px)`:''});D.k=k}
+  document.addEventListener('pointerdown',ev=>{const hnd=ev.target.closest('[data-drag]');if(!hnd)return;const el=hnd.closest('.eitem'),list=document.getElementById('selist');if(!el||!list)return;ev.preventDefault();
+    const all=items(),i=all.indexOf(el);D={el,list,i,k:i,y0:ev.clientY,y:ev.clientY,sy:scrollY,r:el.getBoundingClientRect(),others:all.filter(x=>x!==el).map(x=>({el:x,i:all.indexOf(x),r:x.getBoundingClientRect()})),pid:ev.pointerId};
+    try{hnd.setPointerCapture(ev.pointerId)}catch(e){}el.classList.add('dragging');list.classList.add('sorting');if(navigator.vibrate)navigator.vibrate(15);D.raf=requestAnimationFrame(auto)});
+  document.addEventListener('pointermove',ev=>{if(!D||ev.pointerId!==D.pid)return;ev.preventDefault();D.y=ev.clientY},{passive:false});
+  function end(ev){if(!D||(ev&&ev.pointerId!==D.pid))return;cancelAnimationFrame(D.raf);const{i,k,list}=D;D=null;
+    const p=planById(list.dataset.pid),s=p&&sessIn(p,list.dataset.sid);if(s&&seMove(s.exercises,i,k)){psave();toast('Ordem atualizada')}render()}
+  document.addEventListener('pointerup',end);document.addEventListener('pointercancel',end)})();
 /* v4: ao terminar o exercício em foco, o foco volta a seguir a ordem do treino */
 {const _sd=ACT.setDone,_xd=ACT.xDone;ACT.setDone=d=>{_sd(d);_wkRefocus(+d.i)};ACT.xDone=d=>{_xd(d);_wkRefocus(+d.i)}}
 if('serviceWorker'in navigator&&location.protocol!=='file:'){navigator.serviceWorker.register('sw.js').catch(e=>console.warn('SW',e));let had=!!navigator.serviceWorker.controller;navigator.serviceWorker.addEventListener('controllerchange',()=>{if(!had){had=true;return}if(!S||!S.active){saveNow();location.reload()}else toast('Nova versão instalada — será aplicada ao reabrir')})}
