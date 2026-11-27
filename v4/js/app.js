@@ -1,4 +1,4 @@
-const APP_VERSION='4.0.0-alpha.5';
+const APP_VERSION='4.0.0-alpha.6';
 /* ---------- tema (preferência do aparelho) ---------- */
 const THEME_KEY='treino.theme';const MQ_DARK=window.matchMedia?matchMedia('(prefers-color-scheme: dark)'):null;
 function themePref(){try{return localStorage.getItem(THEME_KEY)||'light'}catch(e){return'light'}}
@@ -227,24 +227,25 @@ function itemTarget(e,p,w){const k=e.kind;
 VIEWS.hoje=function(){
   if(S.active)return viewWorkout();
   const p=myActive();
-  let h=hdr('Hoje',(ME&&ME.name?'Olá, '+esc(ME.name.split(' ')[0])+' · ':'')+esc(new Date().toLocaleDateString('pt-BR',{weekday:'long',day:'numeric',month:'long'})),false,`<div class="row" style="gap:6px">${syncBadge()}<button class="ib" data-act="go" data-v="ajuda" aria-label="Ajuda">?</button></div>`);
+  let h=hdr(ME&&ME.name?'Olá, '+ME.name.split(' ')[0]:'Hoje',esc((t=>t.charAt(0).toUpperCase()+t.slice(1))(new Date().toLocaleDateString('pt-BR',{weekday:'long',day:'numeric',month:'long'}))),false,`<div class="row" style="gap:6px">${syncBadge()}<button class="ib" data-act="go" data-v="ajuda" aria-label="Ajuda">?</button></div>`);
   if(!p)return h+firstSteps();
   if(!p.sessions.length)return h+`<div class="card hero"><h2>${p?'Seu plano ainda não tem treinos':'Nenhum plano ativo'}</h2><p class="mu sm">Crie um plano (ou adicione treinos a ele) na aba <b>Treinos</b>.${ME.role!=='master'?' O master também pode montar para você — aparece aqui automaticamente.':''}</p><button class="btn pri block" data-act="tab" data-t="treinos">Ir para Treinos</button><div style="height:8px"></div><button class="btn block" data-act="syncNow">Atualizar</button></div>`;
   const pr=progOf(p),w=pr.week,N=weeksOf(p);
   if(w>N)return h+`<div class="card hero"><h2>${esc(p.name)} concluído 🎉</h2><p class="mu sm">Você completou as ${N} semanas. O que vem agora?</p><button class="btn pri block" data-act="repeatPlan">Repetir com cargas atualizadas</button><div style="height:8px"></div><button class="btn block" data-act="go" data-v="planos">Escolher outro plano</button></div>`;
-  const ph=phaseAt(p,w),done=doneThisWeek(p),nx=nextSession(p),n=p.sessions.length;
-  h+=`<div class="card"><div class="row"><div class="sp"><div class="b">${esc(p.name)}</div><div class="mu sm">Semana ${w} de ${N} · RIR alvo ${esc(ph.rir||'—')}</div></div>${phPill(p,w)}</div>
-    ${weekFocus(p,w)?`<div class="sm" style="margin-top:6px">${esc(weekFocus(p,w))}</div>`:''}${weekbar(p,w)}
-    <div class="row sm" style="margin-top:12px"><span class="sp mu">Treinos da semana</span><b>${done.size} de ${n}</b></div>
-    <div class="days" style="grid-template-columns:repeat(${Math.min(n,7)},1fr)">${p.sessions.map(s=>`<div class="tap ${done.has(s.id)?'done':''} ${nx&&s.id===nx.id?'today':''}" data-act="start" data-id="${s.id}"><b>${esc(s.name).replace(' ','<br>')}</b>${done.has(s.id)?'✓':(nx&&s.id===nx.id?'próximo':'&nbsp;')}</div>`).join('')}</div>
-    ${done.size?`<div style="text-align:right;margin-top:6px"><button class="btn ghost smb" data-act="advWeek" style="color:var(--mu)">Encerrar semana ${w} ›</button></div>`:''}</div>`;
-  if(nx&&!S.logs.length)h+=`<div class="banner">👟 <b>Primeiro treino?</b> Toque em <b>Iniciar treino</b>. O app mostra cada exercício, você marca as séries e ele conta o descanso.</div>`;
-  if(nx){h+=`<h3>Próximo treino</h3><div class="card hero"><div class="row"><div class="sp"><h2>${esc(nx.name)}</h2><div class="mu sm">${esc(nx.groups||'')}</div></div>${nx.duration?`<span class="pill">${esc(nx.duration)}</span>`:''}</div>
-      <ul class="exl">${nx.exercises.map(e=>{const[a,b]=itemTarget(e,p,w);return`<li><span>${KIND_ICON[e.kind]||''} ${esc(e.name)} <span class="mu sm">${a}</span></span><span>${b}</span></li>`}).join('')}</ul>
-      ${nx.notes?`<div class="mu sm" style="margin-top:8px">📌 ${esc(nx.notes)}</div>`:''}${nx.cardio?`<div class="mu sm" style="margin-top:4px">🏃 ${esc(nx.cardio)}</div>`:''}
-      <div style="margin-top:12px"><button class="btn pri block" data-act="start" data-id="${nx.id}">Iniciar treino</button></div></div>`}
-  const others=p.sessions.filter(x=>x!==nx);
-  if(others.length)h+=`<h3>Outro treino</h3><div class="others">${others.map(x=>`<button data-act="start" data-id="${x.id}">${esc(x.name)}<small>${x.exercises.length} exerc.${done.has(x.id)?' · <span class="ok">✓ feito</span>':''}</small></button>`).join('')}</div>`;
+  const ph=phaseAt(p,w),done=doneThisWeek(p),nx=nextSession(p);
+  if(nx){const fotos=nx.exercises.map(e=>{const k=midiaKey(e);return k&&fotoDe(k,0)}).filter(Boolean).slice(0,3);
+    h+=`<div class="card today">${fotos.length?`<div class="tstrip" style="grid-template-columns:repeat(${fotos.length},minmax(0,1fr))">${fotos.map(u=>`<img src="${u}" alt="" loading="lazy">`).join('')}</div>`:''}<div class="tbody"><div class="eyb">${S.logs.some(L=>L.date===iso(new Date()))?'PRÓXIMO TREINO':'TREINO DE HOJE'}</div><div class="tname">${LETRA(p.sessions.indexOf(nx))} · ${esc(nx.name)}</div><div class="mu sm">${nx.exercises.length} exercício${nx.exercises.length===1?'':'s'}${nx.duration?' · '+esc(nx.duration):''}${nx.groups?' · '+esc(nx.groups):''}</div>
+      <button class="btn pri block big" data-act="start" data-id="${nx.id}" style="margin-top:10px">▶ Começar treino</button><button class="lnk" data-act="go" data-v="session" data-id="${nx.id}" data-pid="${p.id}" style="align-self:center">Ver exercícios antes</button></div></div>`;
+    if(!S.logs.length)h+=`<div class="banner">👟 <b>Primeiro treino?</b> Toque em <b>Começar treino</b>. O app mostra cada exercício com foto, você marca as séries e ele conta o descanso.</div>`}
+  else h+=`<div class="card hero"><h2>Semana ${w} completa 🎉</h2><p class="mu sm">Todos os treinos da semana foram feitos. A próxima semana começa no próximo treino.</p></div>`;
+  h+=`<div class="card"><div class="row"><b class="sp">Esta semana</b><span class="mu sm">${done.size} de ${p.sessions.length} feito${done.size===1?'':'s'}</span></div>
+    <div class="wkt" style="grid-template-columns:repeat(${Math.min(p.sessions.length,6)},minmax(0,1fr))">${p.sessions.map((x,i)=>{const st=done.has(x.id)?'done':(nx&&x.id===nx.id?'now':'');return`<button class="${st}" data-act="go" data-v="session" data-id="${x.id}" data-pid="${p.id}" aria-label="${esc(x.name)}"><b>${LETRA(i)}</b><span>${st==='done'?'feito ✓':st==='now'?'hoje':'depois'}</span></button>`}).join('')}</div>
+    ${done.size&&nx?`<div style="text-align:right;margin-top:6px"><button class="btn ghost smb" data-act="advWeek" style="color:var(--mu)">Encerrar semana ${w} ›</button></div>`:''}</div>`;
+  {let k=0;const tot=weeksOf(p);h+=`<div class="card"><div class="row"><b class="sp">${esc(p.name)}</b><span class="mu sm">semana ${w} de ${tot}</span></div>
+    <div class="phbar">${p.phases.map(f=>{const a=k;k+=f.weeks;const pct=w>k?100:w<=a?0:Math.round(100*(w-a-0.5)/f.weeks);return`<i class="pc-${esc(f.color||'acu')}" style="flex:${f.weeks}"><s style="width:${pct}%"></s></i>`}).join('')}</div>
+    <p class="sm" style="margin:8px 0 0"><b class="phn pc-${esc(ph.color||'acu')}">Fase ${p.phases.indexOf(ph)+1} · ${esc(ph.name)}.</b> ${esc(weekFocus(p,w)||'')} ${esc(sobraTxt(ph.rir))}</p></div>`}
+  {const B=bodyOf(),wk=weightAt(B),st=weekStreak(S.logs);
+   h+=`<div class="grid2"><div class="card tile"><span class="mu xs">Sequência</span><b>${st} semana${st===1?'':'s'}</b><span class="mu xs">treinando sem falhar</span></div><button class="card tile" data-act="addWeight"><span class="mu xs">Peso corporal</span><b>${wk?fnum(wk,1)+' kg':'—'}</b><span class="ac xs b">+ Registrar hoje</span></button></div>`}
   return h};
 
 /* ---------- TREINO EM ANDAMENTO ---------- */
@@ -789,14 +790,28 @@ function evoBody(itemId){const p=myActive();const f=p&&exIn(p,itemId);
   if(f&&p)h+=`<div class="card">${chart(f.e,p)}</div>`;
   if(rec.length)h+=`<h3>Registros</h3><div class="card" style="padding:6px 10px"><table><tr><th>Data</th><th>Sem</th><th>Séries</th><th>1RM</th></tr>${rec.map(({L,x})=>{const r=Math.max(0,...doneSets(x).map(s=>e1rm(s.kg,s.reps)));return`<tr class="tap" data-act="openLog" data-id="${L.id}"><td>${dshort(L.date)}</td><td>${L.week}${L.planId!==(p&&p.id)?'<span class="mu xs"> *</span>':''}</td><td>${esc(exSummary(x))}</td><td>${r?fkg(Math.round(r*10)/10):'—'}</td></tr>`}).join('')}</table>${rec.some(({L})=>L.planId!==(p&&p.id))?'<div class="mu xs" style="padding:6px 4px">* feito em outro plano</div>':''}</div>`;
   return h}
+function prEvents(){const best={},ev=[];S.logs.forEach(L=>L.exercises.forEach(x=>{if(x.kind!=='load'&&x.kind!=='bw')return;const d=doneSets(x).filter(t=>t.kg!=null);if(!d.length)return;
+  const top=d.reduce((a,t)=>t.kg>a.kg||(t.kg===a.kg&&(t.reps||0)>(a.reps||0))?t:a);const k=x.cat||norm(x.name);const b=best[k];
+  if(b!=null&&top.kg>b)ev.push({L,x,kg:top.kg,reps:top.reps});if(b==null||top.kg>b)best[k]=top.kg}));return ev}
 VIEWS.evolucao=function(){const p=myActive();let h=hdr('Progresso',p?esc(p.name):'',false,syncBadge())+progSeg('evo');
-  if(!p||!p.sessions.length)return h+'<div class="empty">Sem plano ativo.</div>';
-  let sel=S.settings.progEx;if(!sel||!exIn(p,sel)){const L=S.logs[S.logs.length-1];const c=L&&L.exercises.find(x=>exIn(p,x.exId));sel=c?c.exId:(p.sessions.find(s=>s.exercises.length)||{exercises:[{}]}).exercises[0].id}
-  const inPlan=S.logs.filter(L=>L.planId===p.id),w=progOf(p).week,N=weeksOf(p);const vol=inPlan.filter(L=>L.week===w).reduce((a,L)=>a+logVolume(L),0);
-  h+=`<div class="stat"><div><b>${inPlan.length}</b><span>treinos no plano</span></div><div><b>${Math.min(w,N)}/${N}</b><span>semana atual</span></div><div><b>${(vol/1000).toLocaleString('pt-BR',{maximumFractionDigits:1})} t</b><span>volume na semana</span></div></div>`;
-  {const kw=weekKcal(p),B=bodyOf();h+=`<div class="stat" style="margin-top:8px"><div><b>${kw!=null?'~'+kw.toLocaleString('pt-BR'):'—'}</b><span>kcal na semana (estim.)</span></div><div><b>${weightAt(B)?fnum(weightAt(B),1):'—'}</b><span>peso atual (kg)</span></div><div><b>${bmrOf(B)?Math.round(bmrOf(B)).toLocaleString('pt-BR'):'—'}</b><span>metab. basal</span></div></div>`;
-   h+=`<h3>Peso corporal</h3><div class="card">${weightChart(B)||'<div class="mu sm">Nenhuma pesagem ainda.</div>'}<div style="height:8px"></div><div class="row"><button class="btn pri smb sp" data-act="addWeight">+ Registrar peso</button>${weightsSorted(B).length?'<button class="btn smb sp" data-act="go" data-v="weights">Ver registros</button>':''}</div></div>`}
-  h+=`<h3>Exercício</h3><select id="exSel">${exOptions(p,sel)}</select><div id="evo">${evoBody(sel)}</div>`;return h};
+  const ym=ymOf(new Date()),mLogs=S.logs.filter(L=>L.date.startsWith(ym)),prs=prEvents(),mPR=prs.filter(e=>e.L.date.startsWith(ym)).length;
+  const vol=mLogs.reduce((a,L)=>a+logVolume(L),0);
+  h+=`<div class="stat3"><div><span>Treinos no mês</span><b>${mLogs.length}</b></div><div><span>Recordes</span><b>${mPR}</b></div><div><span>Peso movido</span><b>${vol>=1000?(vol/1000).toLocaleString('pt-BR',{maximumFractionDigits:1})+' t':Math.round(vol)+' kg'}</b></div></div>`;
+  h+=calendarHTML(S.logs,'me',true,true);
+  if(prs.length){h+=`<div class="card"><b>Recordes recentes</b>${prs.slice(-3).reverse().map(e=>{const k=e.x.cat&&MIDIA[e.x.cat]?e.x.cat:null,u=k&&fotoDe(k,0),nw=(Date.now()-pISO(e.L.date).getTime())<8*864e5;return`<div class="li2 nob">${u?`<img class="thumb" src="${u}" alt="" loading="lazy" style="width:40px;height:40px">`:`<span class="thumb ph" style="width:40px;height:40px">🏆</span>`}<span class="t"><b>${esc(e.x.name)}</b><span class="mu sm">${fkg(e.kg)} kg${e.reps?' × '+e.reps:''} · ${dshort(e.L.date)}</span></span>${nw?'<span class="newb">NOVO</span>':''}</div>`}).join('')}</div>`}
+  if(p&&p.sessions.some(s=>s.exercises.length)){let sel=S.settings.progEx;if(!sel||!exIn(p,sel)){const L=S.logs[S.logs.length-1];const c=L&&L.exercises.find(x=>exIn(p,x.exId));sel=c?c.exId:(p.sessions.find(s=>s.exercises.length)||{exercises:[{}]}).exercises[0].id}
+    const f=exIn(p,sel),e=f&&f.e;
+    if(e){const ent=[];S.logs.forEach(L=>{const x=L.exercises.find(x=>x.exId===e.id);if(x&&exHasData(x))ent.push({L,x})});const k=midiaKey(e),u=k&&fotoDe(k,0);
+      h+=`<div class="card"><div class="row" style="gap:10px">${u?`<img class="thumb" src="${u}" alt="" style="width:44px;height:44px">`:''}<div class="sp" style="min-width:0"><span class="mu xs">Exercício</span><div class="b">${esc(e.name)}</div></div><label class="trocar"><span class="sr">Trocar exercício do gráfico</span><select id="exSel">${exOptions(p,sel)}</select><span class="btn smb" aria-hidden="true">Trocar</span></label></div>`;
+      if(usesLoad(e)){const tops=ent.map(({x})=>topKg(x)).filter(v=>v!=null),last=tops[tops.length-1],firstI=Math.max(0,tops.length-8),d=tops.length>1?r2(last-tops[firstI]):null;
+        let best=null,bestL=null;ent.forEach(({L,x})=>doneSets(x).forEach(t=>{if(t.kg!=null&&(!best||t.kg>best.kg||(t.kg===best.kg&&(t.reps||0)>(best.reps||0)))){best=t;bestL=L}}));
+        h+=`<div class="row" style="gap:8px;margin-top:10px;align-items:baseline"><span class="bignum">${last!=null?fkg(last)+' kg':'—'}</span>${d?`<span class="${d>0?'ok':'mu'} sm b">${d>0?'+':''}${fkg(d)} kg em ${tops.length-firstI} treinos</span>`:''}</div>${sparkSVG(tops.slice(-8))||'<p class="mu sm">Faça mais treinos para ver o gráfico.</p>'}${best?`<p class="mu sm" style="margin:6px 0 0">Melhor série: ${fkg(best.kg)} kg${best.reps?' × '+best.reps:''} em ${dshort(bestL.date)}</p>`:''}`}
+      else h+=ent.length?`<p class="sm" style="margin:10px 0 0">Última vez (${dshort(ent[ent.length-1].L.date)}): ${esc(exSummary(ent[ent.length-1].x))}</p>`:'<p class="mu sm">Ainda sem registros.</p>';
+      h+=`<button class="lnk" data-act="go" data-v="evo" data-id="${e.id}">Ver detalhes ›</button></div>`}}
+  {const B=bodyOf(),ws=weightsSorted(B),wk=weightAt(B);const m0=ws.filter(x=>x.date<ym+'-01').pop(),dm=wk&&m0?r2(wk-m0.kg):null;const kw=p&&weekKcal(p);
+   h+=`<div class="card"><div class="row" style="gap:10px"><div class="sp"><span class="mu xs">Peso corporal</span><div><span class="bignum" style="font-size:22px">${wk?fnum(wk,1)+' kg':'—'}</span> ${dm!=null?`<span class="mu sm">${dm>0?'+':''}${fnum(dm,1)} kg no mês</span>`:''}</div></div>${ws.length>1?`<div style="width:110px">${sparkSVG(ws.slice(-8).map(x=>x.kg)).replace('stroke="var(--ac)"','stroke="var(--acu)"').replace('fill="var(--ac)"','fill="var(--acu)"')}</div>`:''}</div>
+     <div class="row" style="margin-top:8px"><button class="btn pri smb sp" data-act="addWeight">+ Registrar peso</button>${ws.length?'<button class="btn smb sp" data-act="go" data-v="weights">Ver registros</button>':''}</div>${kw!=null?`<p class="mu xs" style="margin:8px 0 0">Gasto estimado na semana: ~${kw.toLocaleString('pt-BR')} kcal</p>`:''}</div>`}
+  return h};
 VIEWS.evo=function({id}){const f=findExAny(id);return hdr(f?f.e.name:'Evolução',f?esc(f.s.name):'',true)+evoBody(id)};
 
 /* ---------- HISTÓRICO ---------- */
@@ -955,7 +970,7 @@ function weekStartISO(s){const d=pISO(s),k=(d.getDay()+6)%7;d.setDate(d.getDate(
 function weekStreak(logs){const wk=new Set(logs.map(L=>weekStartISO(L.date)));let d=pISO(weekStartISO(iso(new Date())));let n=0;
   if(!wk.has(iso(d)))d.setDate(d.getDate()-7); // semana atual ainda pode estar em andamento
   while(wk.has(iso(d))){n++;d.setDate(d.getDate()-7)}return n}
-function calendarHTML(logs,key,tap){const today=iso(new Date()),cur=ymOf(new Date());const ym=CAL[key]||cur;const[y,m]=ym.split('-').map(Number);
+function calendarHTML(logs,key,tap,nost){const today=iso(new Date()),cur=ymOf(new Date());const ym=CAL[key]||cur;const[y,m]=ym.split('-').map(Number);
   const by={};logs.forEach(L=>{(by[L.date]=by[L.date]||[]).push(L)});
   const first=new Date(y,m-1,1),days=new Date(y,m,0).getDate(),lead=(first.getDay()+6)%7;
   const mLogs=logs.filter(L=>L.date.startsWith(ym)),nDays=Object.keys(by).filter(d=>d.startsWith(ym)).length;
@@ -965,6 +980,7 @@ function calendarHTML(logs,key,tap){const today=iso(new Date()),cur=ymOf(new Dat
     <div class="calg">${['S','T','Q','Q','S','S','D'].map(d=>`<span class="cw">${d}</span>`).join('')}${'<span></span>'.repeat(lead)}`;
   for(let d=1;d<=days;d++){const ds=`${ym}-${String(d).padStart(2,'0')}`,L=by[ds],fut=ds>today;
     h+=`<span class="cd${L?' on':''}${ds===today?' td':''}${fut?' fu':''}" ${L&&tap?`data-act="openLog" data-id="${L[0].id}"`:''} ${L?`title="${esc(L.map(x=>x.name).join(', '))}"`:''}>${d}${L&&L.length>1?`<i>${L.length}</i>`:''}</span>`}
+  if(nost)return h+`</div><p class="mu xs" style="margin:10px 0 0">${nDays?'Toque num dia para ver o treino feito.':'Nenhum treino neste mês ainda.'}</p></div>`;
   h+=`</div><div class="stat" style="margin-top:12px"><div><b>${mLogs.length}</b><span>treinos no mês</span></div><div><b>${(mLogs.length/weeks).toLocaleString('pt-BR',{maximumFractionDigits:1})}</b><span>por semana</span></div><div><b>${weekStreak(logs)}</b><span>semana${weekStreak(logs)===1?'':'s'} seguida${weekStreak(logs)===1?'':'s'}</span></div></div>
     <div class="mu xs" style="margin-top:8px">${nDays} dia${nDays===1?'':'s'} com treino${ym===cur?' até hoje':''} · "semanas seguidas" conta as semanas (seg–dom) com ao menos 1 treino.</div></div>`;
   return h}
@@ -1286,7 +1302,7 @@ document.addEventListener('input',ev=>{const t=ev.target,d=t.dataset;
 document.addEventListener('change',ev=>{const t=ev.target,d=t.dataset;
   if(d.wf||d.wc||d.ww)return onWorkoutInput(t,true);
   if(t.id==='importFile')return onImport(t);
-  if(t.id==='exSel'){S.settings.progEx=t.value;save();$('#evo').innerHTML=evoBody(t.value);return}
+  if(t.id==='exSel'){S.settings.progEx=t.value;save();if($('#evo'))$('#evo').innerHTML=evoBody(t.value);else render();return}
   if(t.id==='pkGrp'){PK.grp=t.value;refreshPicker();return}
   if(d.plf){const p=planOf(d);p[d.plf]=t.type==='checkbox'?t.checked:t.value;psave();return}
   if(d.phf){const p=planOf(d),ph=p.phases[+d.k],f=d.phf;let v=t.value;
