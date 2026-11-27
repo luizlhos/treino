@@ -1,4 +1,4 @@
-const APP_VERSION='4.0.0-alpha.1';
+const APP_VERSION='4.0.0-alpha.2';
 /* ---------- tema (preferência do aparelho) ---------- */
 const THEME_KEY='treino.theme';const MQ_DARK=window.matchMedia?matchMedia('(prefers-color-scheme: dark)'):null;
 function themePref(){try{return localStorage.getItem(THEME_KEY)||'light'}catch(e){return'light'}}
@@ -204,6 +204,17 @@ function render(){const pv=window.AV&&AV.takeover();if(pv){$('#app').innerHTML=p
 const VIEWS={},ACT={};
 if(window.AV)AV.install({VIEWS,ACT});
 
+
+/* ---------- mídia dos exercícios (v4) ---------- */
+function midiaItem(e){if(!e||typeof MIDIA==='undefined')return null;let m=e.cat&&MIDIA[e.cat];if(!m){const c=CATALOG.find(x=>x.name===e.name);m=c&&MIDIA[c.id]}return m||null}
+function midiaKey(e){if(e.cat&&typeof MIDIA!=='undefined'&&MIDIA[e.cat])return e.cat;const c=CATALOG.find(x=>x.name===e.name);return c?c.id:null}
+function thumbHTML(e,sz){const k=midiaKey(e),u=k&&fotoDe(k,0);return u?`<img class="thumb" src="${u}" alt="" loading="lazy" style="width:${sz||48}px;height:${sz||48}px">`:''}
+function midiaBlock(e){const m=midiaItem(e);if(!m)return'';const k=midiaKey(e);let h='';
+  if(m.f){const n=Math.min(m.n||1,2);h+=`<div class="mfotos">${[0,1].slice(0,n).map(i=>`<figure><img src="${fotoDe(k,i)}" alt="${i?'Posição final':'Posição inicial'}" loading="lazy"><figcaption>${i?'2 · Fim':'1 · Início'}</figcaption></figure>`).join('')}</div>`}
+  if((m.p&&m.p.length)||(m.s&&m.s.length))h+=`<div class="mmus">${(m.p||[]).map(x=>`<span class="chip on">${esc(x)}</span>`).join('')}${(m.s||[]).map(x=>`<span class="chip">${esc(x)}</span>`).join('')}</div>`;
+  if(m.c&&m.c.length)h+=`<div class="card"><b>Como fazer</b><ol class="mpassos">${m.c.map(x=>`<li>${esc(x)}</li>`).join('')}</ol>${m.e&&m.e.length?`<b>Evite</b><ul class="mpassos">${m.e.map(x=>`<li>${esc(x)}</li>`).join('')}</ul>`:''}</div>`;
+  if(m.f)h+=`<p class="mu xs" style="margin:2px 2px 10px">${esc(MIDIA_CREDITO)}</p>`;
+  return h}
 /* ---------- HOJE ---------- */
 function itemTarget(e,p,w){const k=e.kind;
   if(k==='cardio'){const c=e.cardio||{};return[[c.min?c.min+' min':null,c.km?fnum(c.km,2)+' km':null].filter(Boolean).join(' · ')||'cardio',esc(c.zone||'')]}
@@ -244,9 +255,9 @@ function viewWorkout(){
     const right=k==='cardio'||k==='wod'||(k==='time'&&pl==null)?`<span class="kd">${KIND_ICON[k]}</span>`:`<div class="kg">${k==='bw'?'Lastro':'Plano'}<b>${pl!=null?fkg(pl)+' kg':(k==='bw'?'PC':'—')}</b></div>`;
     const sub=k==='cardio'?itemTarget(e,p,w).filter(Boolean).join(' · '):k==='wod'?itemTarget(e,p,w)[0]:`${ax.sets.length} × ${esc(e.reps)}${k==='time'?'s':''}${e.rir?' · '+esc(e.rir):''}${e.rest?' · '+esc(e.rest):''}`;
     const ch=chainAt(A.exercises,i),inCh=ch.len>1;
-    h+=`<div class="card ex ${all?'exdone':''} ${(k==='cardio'||k==='wod')&&ax.done?'xdone':''} ${inCh?'bs'+(ch.pos<ch.len?' bsn':'')+(ch.pos>1?' bsp':''):''}" id="ex${i}">${inCh?`<div class="bst">🔗 ${chainName(ch.len)} ${ch.pos}/${ch.len}${ch.pos<ch.len?' · sem descanso, siga para o próximo':' · descanse depois desta série'}</div>`:''}<div class="exh" data-act="toggleWhy" data-i="${i}"><div style="min-width:0"><b>${i+1}. ${esc(ax.name)}</b><div class="mu sm">${sub}</div></div>${right}</div>
+    h+=`<div class="card ex ${all?'exdone':''} ${(k==='cardio'||k==='wod')&&ax.done?'xdone':''} ${inCh?'bs'+(ch.pos<ch.len?' bsn':'')+(ch.pos>1?' bsp':''):''}" id="ex${i}">${inCh?`<div class="bst">🔗 ${chainName(ch.len)} ${ch.pos}/${ch.len}${ch.pos<ch.len?' · sem descanso, siga para o próximo':' · descanse depois desta série'}</div>`:''}<div class="exh" data-act="toggleWhy" data-i="${i}">${thumbHTML(e,44)}<div style="min-width:0;flex:1"><b>${i+1}. ${esc(ax.name)}</b><div class="mu sm">${sub}</div></div>${right}</div>
       ${lp?`<div class="last">Última (${dshort(lp.log.date)}): ${esc(exSummary(lp.ex))}</div>`:''}
-      ${ax.open&&e.why?`<div class="why">${esc(e.why)}</div>`:''}${k==='load'&&p&&f&&planEmpty(e)?`<div class="mu xs" style="margin:4px 0 2px">Sem carga no plano: a carga que você usar hoje vira a base do plano ao finalizar.</div>`:''}`;
+      ${ax.open&&e.why?`<div class="why">${esc(e.why)}</div>`:''}${ax.open&&!e.why&&midiaItem(e)&&midiaItem(e).c?`<div class="why"><b>Como fazer:</b> ${midiaItem(e).c.map(esc).join(' ')}</div>`:''}${k==='load'&&p&&f&&planEmpty(e)?`<div class="mu xs" style="margin:4px 0 2px">Sem carga no plano: a carga que você usar hoje vira a base do plano ao finalizar.</div>`:''}`;
     if(k==='load'||k==='bw'){const[lo,hi]=range(e.reps);
       h+=`<div class="sg hd2"><span>#</span><span>${k==='bw'?'lastro':'kg'}</span><span>reps</span><span>RIR</span><span></span></div>
       ${ax.sets.map((s,j)=>`<div class="sg ${s.done?'done':''}"><span>${j+1}</span><input data-wf="kg" data-i="${i}" data-j="${j}" inputmode="decimal" value="${s.kg??''}" placeholder="${k==='bw'?'0':'kg'}"><input data-wf="reps" data-i="${i}" data-j="${j}" inputmode="numeric" value="${s.reps??''}" placeholder="${lo===hi?lo:lo+'–'+hi}"><input data-wf="rir" data-i="${i}" data-j="${j}" inputmode="numeric" value="${s.rir??''}" placeholder="${esc(String(e.rir||'').replace(/RIR\s*/,''))}"><button class="chk" data-act="setDone" data-i="${i}" data-j="${j}" aria-label="Concluir série">✓</button></div>`).join('')}`}
@@ -264,7 +275,7 @@ function viewWorkout(){
         `<label>Carga (kg)<input data-ww="kg" data-i="${i}" inputmode="decimal" value="${x.kg??''}"></label>`}
         <label>Versão<select data-ww="rx" data-i="${i}"><option value="1" ${x.rx!==false?'selected':''}>Rx</option><option value="0" ${x.rx===false?'selected':''}>Adaptado</option></select></label></div>
         <div class="row" style="margin-top:8px">${t.cap&&F!=='MaxLoad'?`<button class="btn smb" data-act="wodTimer" data-i="${i}">▶ Cronômetro ${t.cap} min</button>`:''}<span class="sp"></span><button class="btn smb ${ax.done?'':'pri'}" data-act="xDone" data-i="${i}">${ax.done?'✓ Concluído':'Concluir'}</button></div>`}
-    if(k!=='cardio'&&k!=='wod')h+=`<div class="row" style="margin-top:8px"><button class="btn ghost smb" data-act="addSet" data-i="${i}">+ Série</button>${ax.sets.length>1?`<button class="btn ghost smb" data-act="rmSet" data-i="${i}" style="color:var(--mu)">− Série</button>`:''}<span class="sp"></span>${e.why?`<button class="btn ghost smb" data-act="toggleWhy" data-i="${i}" style="color:var(--mu)">${ax.open?'ocultar':'dicas'}</button>`:''}</div>`;
+    if(k!=='cardio'&&k!=='wod')h+=`<div class="row" style="margin-top:8px"><button class="btn ghost smb" data-act="addSet" data-i="${i}">+ Série</button>${ax.sets.length>1?`<button class="btn ghost smb" data-act="rmSet" data-i="${i}" style="color:var(--mu)">− Série</button>`:''}<span class="sp"></span>${e.why||(midiaItem(e)&&midiaItem(e).c)?`<button class="btn ghost smb" data-act="toggleWhy" data-i="${i}" style="color:var(--mu)">${ax.open?'ocultar':(e.why?'dicas':'como fazer')}</button>`:''}</div>`;
     const sg=p&&suggest(ax,p,w);
     if(sg)h+=`<div class="sug ${sg.type}">${sg.msg}${sg.act?(ax.applied?`<div class="ok b" style="margin-top:6px">✓ Plano ajustado</div>`:`<button class="btn smb block" data-act="applySug" data-i="${i}">${esc(sg.act.label)}</button>`):''}</div>`;
     h+=`</div>`});
@@ -383,6 +394,7 @@ VIEWS.session=function({id,pid}){const p=planById(pid),s=sessIn(p,id);if(!s)retu
 VIEWS.exercise=function({id,pid}){const p=planById(pid),f=exIn(p,id);if(!f)return hdr('Exercício','',true)+'<div class="empty">Não encontrado</div>';const e=f.e,w=U()?0:progOf(p).week,N=weeksOf(p);
   const a=`data-eid="${e.id}" data-pid="${p.id}"`;
   let h=hdr(e.name,`${esc(f.s.name)} · ${KIND_ICON[e.kind]} ${esc(KIND_LABEL[e.kind])}`,true);
+  h+=midiaBlock(e);
   h+=`<div class="card"><label class="f" style="margin-top:0"><span>Nome</span><input data-ef="name" ${a} value="${esc(e.name)}"></label>
     <label class="f"><span>Tipo de registro</span>${sel('',Object.entries(KIND_LABEL),e.kind,`data-ef="kind" ${a}`)}</label>`;
   if(e.kind==='load'||e.kind==='bw'||e.kind==='time')h+=`<div class="grid3"><label class="f"><span>Séries</span><input data-ef="sets" ${a} inputmode="numeric" value="${e.sets}"></label><label class="f"><span>${e.kind==='time'?'Alvo (seg)':'Reps'}</span><input data-ef="reps" ${a} value="${esc(e.reps)}"></label><label class="f"><span>RIR</span><input data-ef="rir" ${a} value="${esc(e.rir||'')}"></label></div>
