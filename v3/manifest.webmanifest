@@ -1,6 +1,6 @@
 {
- "name": "Treino v4 (teste)",
- "short_name": "Treino v4",
+ "name": "Treino (versão anterior)",
+ "short_name": "Treino v3",
  "start_url": "./",
  "scope": "./",
  "display": "standalone",
