@@ -17,7 +17,7 @@
     CONTACT: 'luiz.lhos@gmail.com',                   // e-mail/WhatsApp para pedidos de privacidade (LGPD). Mostrado no termo se preenchido
     FN: 'public-intake',             // Edge Function pública
     BUCKET: 'assessment-photos',
-    CONSENT_VERSION: 'v1-2026-11',   // mude ao alterar o texto do termo
+    CONSENT_VERSION: 'v2-2026-11',   // mude ao alterar o texto do termo
     TURNSTILE_SITEKEY: '',           // opcional: chave do Cloudflare Turnstile (anti-robô). Vazio = desligado
   };
 
@@ -91,6 +91,27 @@
   ];
   const QS = SECTIONS.flatMap(s => s.qs);
   const QMAP = Object.fromEntries(QS.map(q => [q.k, q]));
+  /* ---------- formulário CURTO (v3.16) — usa as mesmas chaves; as demais perguntas só aparecem em avaliações antigas ---------- */
+  const MEDIR = 'Fita métrica encostada na pele, firme mas sem apertar, paralela ao chão. Meça em pé, relaxado, ao final de uma expiração normal (sem prender o ar nem encolher a barriga). Faça 2 vezes e use a média.';
+  const FORM = [
+    { t: 'Você', ks: [['whatsapp', { help: 'Usado para enviar sua avaliação, seu treino e as fotos de antes e depois.' }], ['birth'], ['sex']] },
+    { t: 'Medidas', note: '📏 <b>Como medir:</b> ' + MEDIR, ks: [
+      ['weight', { help: 'De manhã, em jejum, depois de ir ao banheiro, com pouca roupa e sempre na mesma balança.' }],
+      ['goal_weight', { req: 0, l: 'Peso meta (opcional)' }],
+      ['height', { help: 'Descalço, de costas para a parede, com calcanhares, bumbum e costas encostados, olhando para a frente.' }],
+      ['bf_scale'],
+      ['neck', { help: 'Logo abaixo do "gogó" (pomo de Adão), com a fita levemente inclinada para baixo na frente. Não incline a cabeça.' }],
+      ['waist', { help: 'Na parte mais estreita do tronco, entre a última costela e o umbigo. Barriga relaxada.' }],
+      ['abdomen', { help: 'Exatamente na linha do umbigo, com a barriga relaxada, ao final de uma expiração normal.' }],
+      ['hip', { help: 'Na parte mais larga do bumbum (glúteos), com os pés juntos e a fita bem reta ao redor.' }],
+    ] },
+    { t: 'Objetivo e rotina', ks: [['goal'], ['activity'], ['train_days'], ['train_place', { l: 'Onde você treina? (opcional)' }]] },
+    { t: 'Limitações', ks: [['injuries', { req: 0, l: 'Você tem lesões, dores ou limitações? (opcional)', ph: 'Ex.: dor no joelho ao agachar, lesão no ombro…' }]] },
+    { t: 'Observações', ks: [['notes', { l: 'Algo mais que devo saber? (opcional)', ph: 'Preferências, horários, metas com prazo…' }]] },
+  ];
+  const FORM_SECTIONS = FORM.map(s => ({ t: s.t, note: s.note, qs: s.ks.map(([k, o]) => Object.assign({}, QMAP[k], o || {})) }));
+  const FORM_QS = FORM_SECTIONS.flatMap(s => s.qs);
+  const FORM_KEYS = new Set(FORM_QS.map(q => q.k));
   const MIN_AGE = 18;
 
   /* ---------- estado ---------- */
@@ -210,14 +231,14 @@ html[data-theme=light] .av-q{box-shadow:0 1px 2px rgba(16,24,40,.06)}
     if (mode !== 'public') {
       h += `<div class="av-q" id="avc_name"><div class="t"><span class="av-n">${++n}</span><span>${mode === 'master' ? 'Nome do aluno' : 'Seu nome'}</span></div><input id="av_name" autocomplete="name" maxlength="80" value="${esc(D.name)}"><div class="av-help">É o nome de exibição no app${mode === 'master' ? ' para este aluno' : ''}. Alterar aqui também altera no Perfil.</div><div class="av-msg" id="avm_name" hidden></div></div>`;
     }
-    for (const s of SECTIONS) {
-      h += `<div class="av-sec">${esc(s.t)}</div>`;
+    for (const s of FORM_SECTIONS) {
+      h += `<div class="av-sec">${esc(s.t)}</div>${s.note ? `<div class="av-note" style="margin-top:4px">${s.note}</div>` : ''}`;
       for (const q of s.qs) { const hide = needF(q) && A.sex !== 'F'; h += qHtml(q, A[q.k], hide ? '' : ++n, A); }
     }
     const who = CFG.CONTROLLER ? esc(CFG.CONTROLLER) : 'o profissional responsável pelo seu acompanhamento';
     const consentTxt = mode === 'master'
-      ? 'Confirmo que o cliente foi informado e autorizou o registro destes dados pessoais, inclusive de saúde, para elaboração do plano alimentar e de treino.'
-      : `Declaro ter 18 anos ou mais e autorizo ${who} a tratar meus dados pessoais, inclusive <b>dados de saúde e fotos</b> (dados sensíveis), para elaborar meu plano alimentar e de treino. Os dados ficam acessíveis só a mim e ao profissional responsável. Posso revogar este consentimento e pedir a exclusão dos meus dados a qualquer momento${CFG.CONTACT ? ' pelo próprio app (Minha avaliação → Excluir) ou pelo e-mail ' + esc(CFG.CONTACT) : ' pelo próprio app (Minha avaliação → Excluir) ou falando com o profissional'}.`;
+      ? 'Confirmo que o aluno foi informado e autorizou o registro destes dados pessoais (contato, medidas, objetivo e limitações) para acompanhar o treino.'
+      : `Declaro ter 18 anos ou mais e autorizo ${who} a tratar meus dados pessoais (contato, medidas corporais, objetivo, limitações informadas e fotos) para acompanhar meu treino e me enviar avaliação, treino e fotos pelo WhatsApp. Os dados ficam acessíveis só a mim e ao responsável. Posso pedir a exclusão a qualquer momento${CFG.CONTACT ? ' pelo contato ' + esc(CFG.CONTACT) : ''}.`;
     h += `<div class="av-sec">Consentimento</div><div class="av-q" id="avc_consent"><label class="av-opt ${D.consent ? 'on' : ''}" style="margin:0"><input type="checkbox" id="av_consent" ${D.consent ? 'checked' : ''}><span class="sm">${consentTxt}</span></label><div class="av-msg" id="avm_consent" hidden></div></div>`;
     if (mode === 'public') {
       h += `<input class="av-hp" id="av_hp" name="website" tabindex="-1" autocomplete="off" aria-hidden="true">`;
@@ -242,7 +263,7 @@ html[data-theme=light] .av-q{box-shadow:0 1px 2px rgba(16,24,40,.06)}
     const D = AV.draft, A = D.a;
     const nm = document.getElementById('av_name'), em = document.getElementById('av_email');
     if (nm) D.name = nm.value; if (em) D.email = em.value;
-    for (const q of QS) {
+    for (const q of FORM_QS) {
       if (q.t === 'radio2' || q.t === 'radio') { const r = form.querySelector(`input[name="av_${q.k}"]:checked`); A[q.k] = r ? r.value : ''; }
       else if (q.t === 'parq') A.parq = PARQ.map((_, i) => { const r = form.querySelector(`input[name="av_parq${i}"]:checked`); return r ? r.value === '1' : null; });
       else { const el = document.getElementById('av_' + q.k); if (el) A[q.k] = el.value; }
@@ -258,7 +279,7 @@ html[data-theme=light] .av-q{box-shadow:0 1px 2px rgba(16,24,40,.06)}
     if (mode === 'public') {
       if (!/^[^@\s]+@[^@\s]+\.[^@\s]{2,}$/.test((D.email || '').trim())) err.email = 'E-mail inválido.';
     }
-    for (const q of QS) {
+    for (const q of (mode === 'public' ? QS : FORM_QS)) {
       const raw = A[q.k], req = !!q.req || (q.k === 'pregnancy' && isF);
       if (needF(q) && !isF) continue;
       if (q.t === 'parq') {
@@ -367,7 +388,7 @@ html[data-theme=light] .av-q{box-shadow:0 1px 2px rgba(16,24,40,.06)}
         <button class="btn ghost block" data-act="avClose">Voltar ao login</button></div>`;
     }
     if (s.mode === 'resend') {
-      return `<div class="login" style="max-width:420px"><h1>Criar ou redefinir senha</h1><p class="mu">Digite o e-mail da sua avaliação. Se houver conta, enviaremos um código de acesso.</p>
+      return `<div class="login" style="max-width:420px"><h1>Criar ou redefinir senha</h1><p class="mu">Digite o e-mail cadastrado. Se houver conta, enviaremos um código de acesso.</p>
         <label class="f"><span>E-mail</span><input id="av_rsEmail" type="email" autocomplete="email" autocapitalize="off"></label>
         <div id="avRsMsg" class="sm" style="min-height:20px;margin-top:8px"></div>
         <button class="btn pri block" data-act="avResend" id="avRsBtn">Enviar código</button>
@@ -531,7 +552,8 @@ html[data-theme=light] .av-q{box-shadow:0 1px 2px rgba(16,24,40,.06)}
       if (q.t === 'num') return esc(f1(v)) + ' ' + esc(q.u || '');
       return esc(v).replace(/\n/g, '<br>');
     };
-    return SECTIONS.map(s => {
+    const legacy = SECTIONS.map(s => ({ t: s.t + ' (avaliação anterior)', qs: s.qs.filter(q => !FORM_KEYS.has(q.k)) }));
+    return FORM_SECTIONS.concat(legacy).map(s => {
       const rows = s.qs.filter(q => a[q.k] != null && a[q.k] !== '').map(q => `<div style="padding:8px 0;border-top:1px solid var(--s3)"><div class="mu xs">${esc(q.l)}</div><div class="sm">${fmt(q, a[q.k])}</div></div>`).join('');
       return rows ? `<h3>${esc(s.t)}</h3><div class="card" style="padding:4px 14px">${rows}</div>` : '';
     }).join('');
@@ -615,7 +637,7 @@ html[data-theme=light] .av-q{box-shadow:0 1px 2px rgba(16,24,40,.06)}
     if (p.welcome) h += `<div class="av-note">Senha criada! Esta é a sua análise. Abaixo você pode enviar as 4 fotos.</div>`;
     if (c.loading) return h + '<div class="empty">Carregando…</div>';
     if (c.err) return h + `<div class="card">Erro: ${esc(c.err)}</div>`;
-    if (!c.list.length) return h + `<div class="card"><div class="mu sm">Você ainda não respondeu o questionário de saúde, dieta e treino. Leva uns 8 minutos.</div><div style="height:10px"></div><button class="btn pri block" data-act="avNew">Responder questionário</button></div>`;
+    if (!c.list.length) return h + `<div class="card"><div class="mu sm">Você ainda não respondeu sua avaliação: medidas, objetivo e rotina. Leva uns 2 minutos.</div><div style="height:10px"></div><button class="btn pri block" data-act="avNew">Responder questionário</button></div>`;
     const L = c.list[0];
     h += `<h3>Última · ${esc(new Date(L.created_at).toLocaleDateString('pt-BR'))}</h3>` + resultHtml(L) + photosHtml(L, true);
     setTimeout(() => loadPhotos(L), 0);
@@ -743,7 +765,7 @@ html[data-theme=light] .av-q{box-shadow:0 1px 2px rgba(16,24,40,.06)}
   }
 
   AV.mine = () => (ME && SB ? loadList('mine', ME.id) : null);
-  AV.install = install; AV.takeover = takeover; AV.analyze = analyze; AV.SECTIONS = SECTIONS; AV.PARQ = PARQ; AV.collect = collect;
+  AV.install = install; AV.takeover = takeover; AV.analyze = analyze; AV.SECTIONS = SECTIONS; AV.FORM_SECTIONS = FORM_SECTIONS; AV.PARQ = PARQ; AV.collect = collect;
   if (typeof window !== 'undefined') window.AV = AV;
   if (typeof module !== 'undefined' && module.exports) module.exports = AV;
 })();

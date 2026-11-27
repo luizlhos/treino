@@ -527,7 +527,7 @@ function sessionsFromRaw(t,p){if(!t)return[];
     it.sets=sets;it.reps=reps;it.restSec=rest;it.rest=rest>=120?(rest/60)+' min':rest+' s';it.rir=it.kind==='time'||c.cat==='Core'?'':'RIR 2';return it}})}))}
 
 "use strict";
-const APP_VERSION='3.15.0';
+const APP_VERSION='3.16.0';
 /* ---------- tema (preferência do aparelho) ---------- */
 const THEME_KEY='treino.theme';const MQ_DARK=window.matchMedia?matchMedia('(prefers-color-scheme: dark)'):null;
 function themePref(){try{return localStorage.getItem(THEME_KEY)||'dark'}catch(e){return'dark'}}
@@ -1075,6 +1075,13 @@ const PARQ=['Algum médico já disse que você tem problema no coração ou pres
  'Você toma atualmente remédios receitados para alguma doença crônica?',
  'Você tem (ou teve nos últimos 12 meses) problema em ossos, articulações ou tecidos moles que possa piorar com atividade física?',
  'Algum médico já disse que você só deve fazer atividade física com supervisão médica?'];
+const HOWTO=[['Regra geral','fita métrica encostada na pele, firme mas sem apertar, paralela ao chão. Em pé, relaxado, ao final de uma expiração normal (sem prender o ar nem encolher a barriga). Meça 2 vezes, use a média, e repita sempre no mesmo horário.'],
+ ['Peso','de manhã, em jejum, depois de ir ao banheiro, com pouca roupa e sempre na mesma balança.'],['Altura','descalço, calcanhares, bumbum e costas encostados na parede, olhando para a frente.'],
+ ['Pescoço','logo abaixo do "gogó" (pomo de Adão), fita levemente inclinada para baixo na frente; não incline a cabeça.'],['Peitoral','na linha dos mamilos, braços soltos ao lado do corpo.'],
+ ['Cintura','na parte mais estreita do tronco, entre a última costela e o umbigo, barriga relaxada.'],['Abdômen','exatamente na linha do umbigo, barriga relaxada.'],['Quadril','na parte mais larga do bumbum, pés juntos.'],
+ ['Braço contraído','braço dobrado a 90° e bíceps contraído, no ponto de maior volume (meça sempre o mesmo lado).'],['Antebraço','braço estendido e mão relaxada, na parte mais grossa, logo abaixo do cotovelo.'],
+ ['Coxa','em pé, peso nas duas pernas, logo abaixo da dobra do bumbum, na parte mais grossa.'],['Panturrilha','em pé, peso nas duas pernas, na parte mais grossa.'],
+ ['Dobras (adipômetro)','lado direito do corpo, pele pinçada com polegar e indicador, adipômetro 1 cm abaixo dos dedos; leia em 2 segundos. Repita 2 a 3 vezes e use a média.']];
 const CIRC=[['neck','Pescoço'],['chest','Peitoral'],['waist','Cintura'],['abdomen','Abdômen (umbigo)'],['hip','Quadril'],['arm','Braço contraído'],['forearm','Antebraço'],['thigh','Coxa'],['calf','Panturrilha']];
 const FOLDS=[['chest','Peitoral'],['midax','Axilar média'],['triceps','Tríceps'],['subscap','Subescapular'],['abd','Abdominal'],['suprail','Suprailíaca'],['thigh','Coxa']];
 const JP3={M:['chest','abd','thigh'],F:['triceps','suprail','thigh']};
@@ -1123,15 +1130,13 @@ function kv(l,v,s,c){return`<div class="row" style="padding:7px 0;border-top:1px
 function dl(a,b,inv){if(a==null||b==null)return'';const d=r1(a-b);if(!d)return'<span class="mu xs"> =</span>';const good=inv?d<0:d>0;return` <span class="xs" style="color:${good?'var(--ok)':'var(--warn)'}">${d>0?'+':''}${String(d).replace('.',',')}</span>`}
 const fz=v=>v==null?'—':String(v).replace('.',',');
 VIEWS.anam=function({uid}){const c=anamCtx(uid);if(!c)return hdr('Anamnese','',true)+'<div class="empty">Carregando…</div>';const a=anamOf(c.lib),k=anamBasics(c,a);
-  if(ME.role!=='master')ANM_TAB='res';let h=hdr('Avaliação física',c.self?'Medidas e composição corporal':'de '+esc(c.name),true);
-  h+=ME.role!=='master'?'':`<div class="seg">${[['res','Resultados'],['aval','Nova medição'],['saude','Saúde (anamnese)']].map(([t,l])=>`<button class="${ANM_TAB===t?'on':''}" data-act="anTab" data-t="${t}" data-uid="${uid||''}">${l}</button>`).join('')}</div>`;
-  if(parqAlert(a.health))h+=`<div class="sug down" style="margin:10px 0 0">⚠️ Há resposta <b>"Sim"</b> no questionário de saúde. Recomenda-se avaliação médica antes de aumentar a intensidade dos treinos.</div>`;
+  if(ANM_TAB==='saude')ANM_TAB='res';let h=hdr('Avaliação física',c.self?'Medidas e composição corporal':'de '+esc(c.name),true);
+  h+=`<div class="seg">${[['res','Resultados'],['aval','Nova medição']].map(([t,l])=>`<button class="${ANM_TAB===t?'on':''}" data-act="anTab" data-t="${t}" data-uid="${uid||''}">${l}</button>`).join('')}</div>`;
   const hasH=k.height||a.evals.some(x=>x.height);const miss=[!k.sex&&'sexo',!k.birth&&'data de nascimento',!hasH&&'altura'].filter(Boolean);
-  if(ANM_TAB==='saude')return h+anamHealthForm(a,k,uid);
   if(ANM_TAB==='aval')return h+anamEvalForm(a,k,uid,c);
   const ev=a.evals.slice().sort((x,y)=>x.date<y.date?1:-1);
-  if(miss.length)h+=`<div class="card sm mu">Para todos os cálculos falta: <b>${miss.join(', ')}</b>. Preencha na aba <b>Saúde</b>${!hasH?' (a altura vai na avaliação)':''}.</div>`;
-  if(!ev.length)return h+(ME.role==='master'?`<div class="empty">Nenhuma medição ainda.<div style="height:10px"></div><button class="btn pri" data-act="anTab" data-t="aval" data-uid="${uid||''}">+ Nova medição</button></div>`:`<div class="empty">Nenhuma avaliação física ainda. Seu treinador registra aqui suas medidas.</div>`);
+  if(miss.length)h+=`<div class="card sm mu">Para todos os cálculos falta: <b>${miss.join(', ')}</b>. ${c.self?'Preencha em Perfil → Dados corporais':'O aluno preenche no Perfil ou na avaliação'}${!hasH?' (a altura também pode ir na medição)':''}.</div>`;
+  if(!ev.length)return h+`<div class="empty">Nenhuma medição ainda.<div style="height:10px"></div><button class="btn pri" data-act="anTab" data-t="aval" data-uid="${uid||''}">+ Nova medição</button></div>`;
   const E=ev[0],R=evalCalc(E,k),P=ev[1]?evalCalc(ev[1],k):null;
   h+=`<h3>Avaliação de ${isoToBR(E.date)}${P?` <span class="mu xs" style="text-transform:none;letter-spacing:0">vs ${isoToBR(ev[1].date)}</span>`:''}</h3><div class="card" style="padding:6px 14px">`;
   h+=kv('Peso',R.kg?fz(R.kg)+' kg'+(P?dl(R.kg,P.kg,true):''):'—');
@@ -1160,9 +1165,9 @@ function anamEvalForm(a,k,uid,c){const E=ANM_EDIT?a.evals.find(x=>x.id===ANM_EDI
   const e=E||{date:iso(new Date()),weight:c.self?weightAt(bodyOf()):(weightsSorted(c.body||{}).slice(-1)[0]||{}).kg,height:k.height,circ:{},folds:{},protocol:(last&&last.protocol)||'jp3',rhr:last&&last.rhr};
   let h=`<h3>${E?'Editar avaliação':'Nova avaliação'}</h3><div class="card"><div class="grid2"><label class="f" style="margin-top:0"><span>Data</span><input id="evDate" data-mask="date" inputmode="numeric" value="${isoToBR(e.date)}"></label>${inp('evRhr','FC de repouso (bpm)',e.rhr,'ex: 62','numeric').replace('class="f"','class="f" style="margin-top:0"')}</div>
     <div class="grid2">${inp('evW','Peso (kg)',e.weight,'ex: 82,5')}${inp('evH','Altura (cm)',e.height,'ex: 175','numeric')}</div></div>`;
-  h+=`<h3>Circunferências (cm)</h3><div class="card"><div class="grid2">${CIRC.map(([x,l])=>inp('ec_'+x,l,e.circ[x],'')).join('')}</div><div class="mu xs" style="margin-top:6px">Para o % de gordura pela fita: pescoço + ${k.sex==='F'?'cintura + quadril':'abdômen'}. Cintura + quadril também calculam a relação cintura/quadril.</div></div>`;
+  h+=`<h3>Circunferências (cm)</h3><div class="card"><details style="margin:0 0 10px;padding:10px 12px"><summary>📏 Como medir cada medida</summary><div class="sm" style="margin-top:8px;line-height:1.45">${HOWTO.map(([l,t])=>`<div style="margin-top:6px"><b>${l}:</b> ${t}</div>`).join('')}</div></details><div class="grid2">${CIRC.map(([x,l])=>inp('ec_'+x,l,e.circ[x],'')).join('')}</div><div class="mu xs" style="margin-top:6px">Para o % de gordura pela fita: pescoço + ${k.sex==='F'?'cintura + quadril':'abdômen'}. Cintura + quadril também calculam a relação cintura/quadril.</div></div>`;
   h+=`<h3>Dobras cutâneas (mm) — opcional</h3><div class="card"><label class="f" style="margin-top:0"><span>Protocolo</span>${sel('',[['jp3','Jackson & Pollock 3 dobras'],['jp7','Jackson & Pollock 7 dobras']],e.protocol,'id="evProt"')}</label>
-    <div class="grid2">${FOLDS.map(([x,l])=>inp('ef_'+x,l+((JP3[k.sex||'M']||[]).includes(x)?' •':''),e.folds[x],'')).join('')}</div><div class="mu xs" style="margin-top:6px">• = as 3 dobras do protocolo de 3${k.sex?'':' (masculino; marque o sexo na aba Saúde)'}. O de 7 usa todas. Com as dobras preenchidas, elas têm prioridade sobre a fita.</div></div>
+    <div class="grid2">${FOLDS.map(([x,l])=>inp('ef_'+x,l+((JP3[k.sex||'M']||[]).includes(x)?' •':''),e.folds[x],'')).join('')}</div><div class="mu xs" style="margin-top:6px">• = as 3 dobras do protocolo de 3${k.sex?'':' (masculino; informe o sexo no Perfil)'}. O de 7 usa todas. Com as dobras preenchidas, elas têm prioridade sobre a fita.</div></div>
     <button class="btn pri block" data-act="anSaveEval" data-uid="${uid||''}">${E?'Salvar alterações':'Salvar avaliação'}</button>${E?`<div style="height:8px"></div><button class="btn block" data-act="anDelEval" data-id="${E.id}" data-uid="${uid||''}" style="color:var(--bad)">Excluir avaliação</button>`:''}`;
   return h}
 let ANM_EDIT=null;
@@ -1349,7 +1354,7 @@ VIEWS.montar=function(prm){const uid=prm.uid||'';if(!WZ||WZ.uid!==uid||WZ.aid!==
 function firstSteps(){const m=window.AV&&AV.mine?AV.mine():null,d1=!!(m&&m.list&&m.list.length);
   const it=(n,t,d,st,btn)=>`<div class="fs-i ${st}"><span class="fs-n">${st==='done'?'✓':n}</span><div class="sp"><b>${t}</b><div class="mu sm">${d}</div>${btn||''}</div></div>`;
   return`<div class="card"><div class="row"><b class="sp">Seus primeiros passos</b><span class="ac sm b">${d1?1:0} de 3</span></div>
-    ${it(1,'Responder a avaliação',d1?'Pronto! O resultado fica na aba Avaliação.':'Saúde, hábitos e objetivo. Leva uns 8 minutos.',d1?'done':'now',d1?'':'<button class="btn block" data-act="avNew" style="margin-top:8px">Responder agora</button>')}
+    ${it(1,'Responder a avaliação',d1?'Pronto! O resultado fica na aba Avaliação.':'Medidas, objetivo e rotina. Leva uns 2 minutos.',d1?'done':'now',d1?'':'<button class="btn block" data-act="avNew" style="margin-top:8px">Responder agora</button>')}
     ${it(2,'Montar meu treino','3 perguntas rápidas: objetivo, dias por semana e onde você treina.',d1?'now':'next','<button class="btn pri block" data-act="go" data-v="montar" style="margin-top:8px">Montar meu treino</button><button class="btn ghost block" data-act="newPlan">Já treino: quero montar sozinho</button>')}
     ${it(3,'Fazer o primeiro treino','O app mostra cada exercício, as séries e conta o descanso para você.','next')}</div>
     ${ME.role!=='master'?'<div class="banner">ℹ️ Prefere que seu treinador monte? Ele monta pela conta dele e o treino aparece aqui sozinho.</div>':''}`}
@@ -1373,8 +1378,8 @@ VIEWS.avaliacao=function(){const isM=ME.role==='master';
   if(isM)h+=`<div class="seg" style="margin-bottom:10px">${[['rec','Recebidas'],['mine','Minha']].map(([k,l])=>`<button class="${AVT===k?'on':''}" data-act="avTab" data-t="${k}">${l}</button>`).join('')}</div>`;
   if(isM&&AVT==='rec')return h+(window.AV&&VIEWS.avall?VIEWS.avall({embed:true}):'');
   const a=anamOf(S.lib),ev=(a.evals||[]).slice().sort((x,y)=>(y.date||'').localeCompare(x.date||'')),L=ev[0];
-  h+=`<h3>Avaliação física</h3><div class="card">${L?`<div class="row"><div class="sp"><b>Última medição · ${esc(dshort?dshort(L.date):L.date)}</b><div class="mu sm">${ev.length} medição${ev.length===1?'':'ões'} registrada${ev.length===1?'':'s'}</div></div></div>`:`<div class="mu sm">${isM?'Nenhuma medição ainda.':'Seu treinador registra aqui as medidas, dobras cutâneas e bioimpedância.'}</div>`}
-    ${L||isM?`<div style="height:8px"></div><button class="btn block" data-act="anOpen">${L?'Ver avaliação física':'+ Registrar medição'}</button>`:''}</div>`;
+  h+=`<h3>Avaliação física</h3><div class="card">${L?`<div class="row"><div class="sp"><b>Última medição · ${esc(dshort?dshort(L.date):L.date)}</b><div class="mu sm">${ev.length} medição${ev.length===1?'':'ões'} registrada${ev.length===1?'':'s'}</div></div></div>`:`<div class="mu sm">Nenhuma medição ainda. Registre suas circunferências, dobras cutâneas e frequência cardíaca de repouso para acompanhar a evolução.</div>`}
+    <div style="height:8px"></div><button class="btn block" data-act="anOpen">${L?'Ver avaliação física':'+ Registrar medição'}</button></div>`;
   h+=`<h3>Questionário</h3>`+(window.AV&&VIEWS.aval?VIEWS.aval({embed:true}):'');
   return h};
 let AVT='rec';
@@ -1460,7 +1465,7 @@ VIEWS.ajuda=function(){
   h+=sec('📈 Progresso, Avaliação e Perfil',
     helpRow('📈','Progresso','Aba Progresso. <b>Evolução</b>: resumo da semana, peso corporal e o histórico de cargas e 1RM de cada exercício. <b>Histórico</b>: calendário com os dias treinados e a lista de treinos.')+
     helpRow('📅','Treinos','Aba Treinos: o plano atual e seus treinos (A, B, C…). Toque em um treino para ver, trocar, adicionar ou remover exercícios. Todos os planos (em andamento, próximos e finalizados) ficam em Perfil → Planos de treino.')+
-    helpRow('🩺','Avaliação','Aba Avaliação. <b>Questionário</b>: saúde, dieta e rotina, respondido por você (com análise de IMC, gasto calórico, % de gordura e água). <b>Avaliação física</b>: medidas, dobras e bioimpedância, registradas pelo seu treinador.')+
+    helpRow('🩺','Avaliação','Aba Avaliação. <b>Questionário</b> (cerca de 2 min): contato, medidas, objetivo, rotina e limitações, com análise de IMC, gasto calórico, % de gordura e água. <b>Avaliação física</b>: circunferências, dobras cutâneas e frequência cardíaca de repouso, que você mesmo registra (com instruções de como medir). Cada pessoa vê só as próprias; o administrador vê todas.')+
     helpRow('⚡','Opções avançadas','Em Perfil. Ligue <b>Sempre mostrar opções avançadas</b> para ver fases, RIR e progressão de cargas abertas nos planos.')+
     helpRow('👤','Perfil','Planos de treino, avaliação, ajuda, aparência, perfil corporal (para as calorias), sons e alertas, conta e backup.')+
     helpRow('🌓','Aparência','Em Perfil: tema Escuro, Claro ou Automático (segue o iPhone). A escolha vale para o aparelho em que foi feita.')+
@@ -1543,7 +1548,7 @@ function viewLogin(){const last=localStorage.getItem('treino.lastEmail')||'';
    <label class="f"><span>Senha</span><input id="lgPass" type="password" autocomplete="current-password"></label>
    <div id="lgMsg" class="sm" style="color:var(--bad);min-height:20px"></div>
    <button class="btn pri block" data-act="login" id="lgBtn">Entrar</button>
-   <div style="margin-top:20px;padding-top:16px;border-top:1px solid var(--s3)"><p class="mu sm">Ainda não tem acesso?</p><button class="btn block" data-act="avOpen">📋 Fazer minha avaliação gratuita</button><button class="btn block" data-act="avOpenCode">🔑 Tenho um código</button><button class="btn ghost block" data-act="avOpenResend">Criar ou redefinir minha senha</button></div>
+   <div style="margin-top:20px;padding-top:16px;border-top:1px solid var(--s3)"><p class="mu sm">Primeiro acesso ou esqueceu a senha?</p><button class="btn block" data-act="avOpenResend">Criar ou redefinir minha senha</button></div>
    ${/^https?:/.test(SB_URL)?'':'<p class="sm" style="color:var(--bad)">Servidor não configurado.</p>'}</div>`}
 function viewDisabled(){return`<div class="login"><h1>Conta desativada</h1><p class="mu">Seu acesso foi desativado pelo administrador. Fale com ele para reativar.</p><button class="btn block" data-act="logout">Sair</button></div>`}
 async function doLogin(){const em=($('#lgEmail').value||'').trim().toLowerCase(),pw=$('#lgPass').value||'',msg=$('#lgMsg'),btn=$('#lgBtn');
