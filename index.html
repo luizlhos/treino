@@ -527,7 +527,7 @@ function sessionsFromRaw(t,p){if(!t)return[];
     it.sets=sets;it.reps=reps;it.restSec=rest;it.rest=rest>=120?(rest/60)+' min':rest+' s';it.rir=it.kind==='time'||c.cat==='Core'?'':'RIR 2';return it}})}))}
 
 "use strict";
-const APP_VERSION='3.14.3';
+const APP_VERSION='3.15.0';
 /* ---------- tema (preferência do aparelho) ---------- */
 const THEME_KEY='treino.theme';const MQ_DARK=window.matchMedia?matchMedia('(prefers-color-scheme: dark)'):null;
 function themePref(){try{return localStorage.getItem(THEME_KEY)||'dark'}catch(e){return'dark'}}
@@ -727,7 +727,7 @@ const V={tab:'hoje',stack:[]};
 function go(view,params){V.stack.push({view,params:params||{}});render();scrollTo(0,0)}
 function topV(){return V.stack[V.stack.length-1]}
 function setCtx(){const t=topV(),u=t&&t.params&&t.params.uid;if(u==='__tpl'&&ME&&ME.role==='master'){tplPlans();CTX={lib:TPL.lib,uid:u,tpl:true};return}CTX=(u&&MANAGE&&MANAGE.uid===u)?{lib:MANAGE.lib,uid:u}:{lib:null,uid:''}}
-function render(){const pv=window.AV&&AV.takeover();if(pv){$('#app').innerHTML=pv;return}document.body.classList.toggle('nologin',!ME);if(!ME){$('#app').innerHTML=viewLogin();return}if(ME.active===false){$('#app').innerHTML=viewDisabled();return}
+function render(){const pv=window.AV&&AV.takeover();if(pv){$('#app').innerHTML=pv;return}if(ME&&SB&&ME.active!==false){try{bodyFromAv()}catch(e){}}document.body.classList.toggle('nologin',!ME);if(!ME){$('#app').innerHTML=viewLogin();return}if(ME.active===false){$('#app').innerHTML=viewDisabled();return}
   setCtx();const t=topV();let h;try{h=t?VIEWS[t.view](t.params):VIEWS[V.tab]()}catch(e){console.error(e);h=`<div class="card">Erro: ${esc(e.message)}</div>`}
   $('#app').innerHTML=h;document.querySelectorAll('nav button').forEach(b=>b.classList.toggle('on',b.dataset.t===V.tab))}
 const VIEWS={},ACT={};
@@ -1001,6 +1001,22 @@ const _pick=ACT.pick;ACT.pick=d=>{if(d._c&&!allCatalog().some(x=>x.id===d._c.id)
 /* ---------- PERFIL CORPORAL e GASTO CALÓRICO ESTIMADO ----------
    Metabolismo basal: Mifflin-St Jeor. Gasto: MET corrigido pelo metabolismo (1 MET = TMB/24 por hora).
    Cardio com FC média: fórmula de Keytel (2005). Valores são estimativas (±20–30%). */
+/* nome de exibição: um só lugar (profiles.name), usado no perfil, na avaliação e na lista de usuários */
+async function setProfileName(uid,name){name=String(name||'').replace(/\s+/g,' ').trim().slice(0,80);if(name.length<2)throw new Error('Informe o nome (mínimo 2 letras)');
+  const{error}=await SB.from('profiles').update({name}).eq('id',uid);if(error)throw new Error(friendlyErr(error));
+  if(ME&&uid===ME.id){ME.name=name;localStorage.setItem('treino.me',JSON.stringify(ME))}
+  if(typeof USERS!=='undefined'&&USERS&&USERS.list){const u=USERS.list.find(x=>x.id===uid);if(u)u.name=name}return name}
+window.setProfileName=setProfileName;
+/* perfil corporal ← avaliações: preenche só o que está vazio e acrescenta o peso de cada avaliação nova */
+function bodyFromAv(){if(!ME||!window.AV||!AV.mine)return;const m=AV.mine();if(!m||!m.list||!m.list.length)return;const B=bodyOf();if(B.avSync===m.list[0].id)return;
+  let ch=false;const L=m.list[0],a=L.answers||{};
+  if(!B.sex&&(a.sex==='M'||a.sex==='F')){B.sex=a.sex;ch=true}
+  if(!B.birth&&/^\d{4}-\d{2}-\d{2}$/.test(a.birth||'')){B.birth=a.birth;ch=true}
+  if(!B.height&&+L.height_cm){B.height=Math.round(+L.height_cm);ch=true}
+  B.weights=B.weights||[];
+  for(const x of m.list){if(x.id===B.avSync)break;const kg=+x.weight_kg,d=iso(new Date(x.created_at));if(kg&&!B.weights.some(w=>w.date===d)){B.weights.push({date:d,kg:r2(kg)});ch=true}}
+  B.avSync=L.id;save();if(ch)setTimeout(render,0)}
+window.bodyFromAvPrefill=()=>{const B=bodyOf(),w=weightAt(B);return{name:ME&&ME.name||'',sex:B.sex||'',birth:B.birth?isoToBR(B.birth):'',height:B.height?String(B.height):'',weight:w?String(w).replace('.',','):''}};
 function bodyOf(st){st=st||S;if(!st.body)st.body={sex:'',birth:'',height:null,weights:[]};return st.body}
 function ageAt(birth,dateISO){if(!birth)return null;const d=dateISO?pISO(dateISO):new Date(),b=pISO(birth);let a=d.getFullYear()-b.getFullYear();if(d.getMonth()<b.getMonth()||(d.getMonth()===b.getMonth()&&d.getDate()<b.getDate()))a--;return a}
 function weightsSorted(B){return(B.weights||[]).filter(w=>w&&w.kg).slice().sort((a,b)=>a.date<b.date?-1:a.date>b.date?1:0)}
@@ -1244,9 +1260,9 @@ VIEWS.ajustes=function(){const st=S.settings,p=myActive();
   {const tp=themePref();h+=`<h3>Aparência</h3><div class="seg">${[['dark','🌙 Escuro'],['light','☀️ Claro'],['auto','📱 Automático']].map(([k,l])=>`<button class="${tp===k?'on':''}" data-act="setTheme" data-t="${k}">${l}</button>`).join('')}</div><p class="mu xs" style="margin:6px 2px 0">Automático segue o modo claro/escuro do iPhone. Vale só para este aparelho.</p>`}
   if(p){const w=progOf(p).week,N=weeksOf(p);h+=`<h3>Plano ativo</h3><div class="card"><div class="b">${esc(p.name)}</div><p class="sm mu">A semana avança sozinha quando você completa todos os treinos. Use os botões só para corrigir.</p>
     <div class="row"><button class="btn smb" data-act="shiftWeek" data-d="-1">◀ Voltar</button><div class="sp" style="text-align:center"><b>Semana ${Math.min(w,N+1)}</b><div class="mu xs">${w<=N?esc(phaseAt(p,w).name):'concluído'}</div></div><button class="btn smb" data-act="shiftWeek" data-d="1">Avançar ▶</button></div></div>`}
-  {const B=bodyOf(),r=bmrOf(B);h+=`<h3>Perfil corporal</h3><div class="card"><div class="grid2"><label class="f" style="margin-top:0"><span>Sexo</span>${sel('',[['','—'],['M','Masculino'],['F','Feminino']],B.sex,'id="bfSex"')}</label><label class="f" style="margin-top:0"><span>Nascimento (DD/MM/AAAA)</span><input id="bfBirth" data-mask="date" inputmode="numeric" maxlength="10" placeholder="dd/mm/aaaa" value="${esc(isoToBR(B.birth))}" autocomplete="bday"></label></div>
+  {const B=bodyOf(),r=bmrOf(B);h+=`<h3>Meus dados</h3><div class="card"><label class="f" style="margin-top:0"><span>Nome de exibição</span><input id="bfName" maxlength="80" autocomplete="name" value="${esc(ME.name||'')}" placeholder="Seu nome"></label><div class="grid2"><label class="f" style="margin-top:0"><span>Sexo</span>${sel('',[['','—'],['M','Masculino'],['F','Feminino']],B.sex,'id="bfSex"')}</label><label class="f" style="margin-top:0"><span>Nascimento (DD/MM/AAAA)</span><input id="bfBirth" data-mask="date" inputmode="numeric" maxlength="10" placeholder="dd/mm/aaaa" value="${esc(isoToBR(B.birth))}" autocomplete="bday"></label></div>
     <div class="grid2"><label class="f"><span>Altura (cm)</span><input id="bfHeight" inputmode="numeric" maxlength="3" value="${B.height??''}" placeholder="ex: 175"></label><label class="f"><span>Peso atual (kg)</span><button class="btn block" data-act="addWeight" style="padding:10px">${weightAt(B)?fnum(weightAt(B),1)+' kg · atualizar':'Registrar'}</button></label></div>
-    <button class="btn pri block" data-act="saveBody" style="margin-top:4px">Salvar perfil</button>
+    <button class="btn pri block" data-act="saveBody" style="margin-top:4px">Salvar meus dados</button><div class="mu xs" style="margin-top:6px">Sexo, nascimento, altura e peso vêm da sua avaliação quando estiverem vazios.</div>
     <div class="sm" style="margin-top:10px">${r?`Metabolismo basal estimado: <b>${Math.round(r).toLocaleString('pt-BR')} kcal/dia</b>`:'<span class="mu">Preencha sexo, nascimento, altura e peso para calcular o metabolismo e o gasto dos treinos.</span>'}</div>
     <div class="mu xs" style="margin-top:6px">${ME.role==='master'?'Usado para estimar o gasto calórico dos treinos.':'Usado para estimar o gasto calórico dos treinos. Visível para você e para o administrador do app.'} O peso é salvo ao tocar em "Salvar" na janela de registro.</div></div>`}
   h+=`<h3>Durante o treino</h3><p class="mu xs" style="margin:-4px 0 6px">Estas opções são salvas automaticamente ao tocar.</p><div class="card" style="padding:4px 14px"><div class="sw"><span>Som ao fim do descanso</span><input type="checkbox" data-sf="sound" ${st.sound?'checked':''}></div><div class="sw"><span>Aviso faltando 5 segundos</span><input type="checkbox" data-sf="warn5" ${st.warn5!==false?'checked':''}></div><div class="sw"><span>Manter tela ligada</span><input type="checkbox" data-sf="wake" ${st.wake?'checked':''}></div>
@@ -1675,7 +1691,8 @@ Object.assign(ACT,{
   addWeight:()=>{const B=bodyOf();modal('Registrar peso',`<div class="grid2"><label class="f"><span>Data (DD/MM/AAAA)</span><input id="wDate" data-mask="date" inputmode="numeric" maxlength="10" value="${isoToBR(iso(new Date()))}"></label><label class="f"><span>Peso (kg)</span><input id="wKg" inputmode="decimal" value="${weightAt(B)??''}" placeholder="ex: 85,4"></label></div>`,
     [{label:'Cancelar'},{label:'Salvar',cls:'pri',keep:true,fn:()=>{const d=brToISO($('#wDate').value),kg=num($('#wKg').value);if(!d||d>iso(new Date())){toast('Data inválida — use DD/MM/AAAA');return}if(!kg||kg<25||kg>350){toast('Peso inválido');return}B.weights=(B.weights||[]).filter(x=>x.date!==d);B.weights.push({date:d,kg:r2(kg)});$('#modal').hidden=true;save();render();toast('Peso registrado')}}])},
   delWeight:d=>{const B=bodyOf();const x=(B.weights||[]).find(w=>w.date===d.date);confirmBox('Excluir pesagem',`Remover <b>${fnum(x.kg,1)} kg</b> de ${dshort(d.date)}?`,'Excluir',()=>{B.weights=B.weights.filter(w=>w.date!==d.date);save();render()},true)},
-  saveBody:()=>{const B=bodyOf();const sex=$('#bfSex').value,bt=$('#bfBirth').value.trim(),ht=$('#bfHeight').value.trim();
+  saveBody:async()=>{const B=bodyOf();const nm=($('#bfName')?$('#bfName').value:'').replace(/\s+/g,' ').trim();if(nm&&nm!==ME.name){if(!navigator.onLine){toast('Sem internet: o nome não foi alterado');return}try{await setProfileName(ME.id,nm)}catch(e){toast(e.message);$('#bfName').focus();return}}else if($('#bfName')&&!nm){toast('Informe seu nome de exibição');$('#bfName').focus();return}
+    const sex=$('#bfSex').value,bt=$('#bfBirth').value.trim(),ht=$('#bfHeight').value.trim();
     let birth='';if(bt){birth=brToISO(bt);if(!birth){toast('Data de nascimento inválida — use DD/MM/AAAA');$('#bfBirth').focus();return}const a=ageAt(birth);if(a==null||a<10||a>100){toast('Confira o ano de nascimento');$('#bfBirth').focus();return}}
     let height=null;if(ht){height=Math.round(num(ht));if(!height||height<100||height>250){toast('Altura em centímetros (ex: 175)');$('#bfHeight').focus();return}}
     B.sex=sex;B.birth=birth;B.height=height;save();render();toast('Perfil salvo ✓')},

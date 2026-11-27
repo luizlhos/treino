@@ -207,6 +207,9 @@ html[data-theme=light] .av-q{box-shadow:0 1px 2px rgba(16,24,40,.06)}
       h += `<div class="av-q" id="avc_name"><div class="t"><span class="av-n">${++n}</span><span>Nome completo</span></div><input id="av_name" autocomplete="name" maxlength="80" value="${esc(D.name)}"><div class="av-msg" id="avm_name" hidden></div></div>`;
       h += `<div class="av-q" id="avc_email"><div class="t"><span class="av-n">${++n}</span><span>E-mail</span></div><input id="av_email" type="email" inputmode="email" autocomplete="email" autocapitalize="off" maxlength="254" value="${esc(D.email)}"><div class="av-help">Enviaremos para este e-mail um código para você criar sua senha e ver sua análise.</div><div class="av-msg" id="avm_email" hidden></div></div>`;
     }
+    if (mode !== 'public') {
+      h += `<div class="av-q" id="avc_name"><div class="t"><span class="av-n">${++n}</span><span>${mode === 'master' ? 'Nome do aluno' : 'Seu nome'}</span></div><input id="av_name" autocomplete="name" maxlength="80" value="${esc(D.name)}"><div class="av-help">É o nome de exibição no app${mode === 'master' ? ' para este aluno' : ''}. Alterar aqui também altera no Perfil.</div><div class="av-msg" id="avm_name" hidden></div></div>`;
+    }
     for (const s of SECTIONS) {
       h += `<div class="av-sec">${esc(s.t)}</div>`;
       for (const q of s.qs) { const hide = needF(q) && A.sex !== 'F'; h += qHtml(q, A[q.k], hide ? '' : ++n, A); }
@@ -251,8 +254,8 @@ html[data-theme=light] .av-q{box-shadow:0 1px 2px rgba(16,24,40,.06)}
   function collect(mode) {
     const D = AV.draft, A = D.a, out = {}, err = {};
     const isF = A.sex === 'F';
+    if ((D.name || '').trim().length < 2) err.name = mode === 'public' ? 'Informe seu nome completo.' : 'Informe o nome.';
     if (mode === 'public') {
-      if ((D.name || '').trim().length < 2) err.name = 'Informe seu nome completo.';
       if (!/^[^@\s]+@[^@\s]+\.[^@\s]{2,}$/.test((D.email || '').trim())) err.email = 'E-mail inválido.';
     }
     for (const q of QS) {
@@ -329,6 +332,8 @@ html[data-theme=light] .av-q{box-shadow:0 1px 2px rgba(16,24,40,.06)}
         AV.state = { mode: 'sent', email: AV.draft.email.trim() }; clearDraft(); render(); scrollTo(0, 0); return;
       }
       const uid = mode === 'master' ? ctx.uid : ME.id;
+      const nm = (AV.draft.name || '').replace(/\s+/g, ' ').trim(), oldNm = mode === 'master' ? (ctx.name || '') : (ME.name || '');
+      if (nm && nm !== oldNm && window.setProfileName) { try { await window.setProfileName(uid, nm); if (ctx) ctx.name = nm; } catch (e) { toast('Avaliação salva, mas o nome não foi alterado: ' + e.message); } }
       const row = { user_id: uid, created_by: ME.id, source: mode === 'master' ? 'master' : 'self', weight_kg: out.weight, height_cm: out.height, bf_scale_pct: out.bf_scale ?? null, answers: out, consent_version: CFG.CONSENT_VERSION, consent_at: new Date().toISOString() };
       const { data, error } = await SB.from('assessments').insert(row).select('id').single();
       if (error) throw new Error(friendlyErr(error));
@@ -634,12 +639,16 @@ html[data-theme=light] .av-q{box-shadow:0 1px 2px rgba(16,24,40,.06)}
   }
 
   function viewForm({ mode, uid, name }) {
-    clearIfNew(mode + uid);
+    if (clearIfNew(mode + uid)) {
+      const D = AV.draft;
+      if (mode === 'master') D.name = name || '';
+      else if (window.bodyFromAvPrefill) { const P = window.bodyFromAvPrefill(); D.name = P.name; ['sex', 'birth', 'height', 'weight'].forEach(k => { if (P[k]) D.a[k] = P[k]; }); }
+    }
     return hdr(mode === 'master' ? 'Nova avaliação' : 'Nova avaliação', mode === 'master' ? 'para ' + esc(name || 'cliente') : '', true) +
       `<div id="avForm">${formHtml(mode, { uid })}</div>`;
   }
   let lastFormKey = null;
-  function clearIfNew(k) { if (lastFormKey !== k) { clearDraft(); lastFormKey = k; } }
+  function clearIfNew(k) { if (lastFormKey !== k) { clearDraft(); lastFormKey = k; return true; } return false; }
 
   function viewUser({ uid, name }) {
     const c = loadList('user', uid);
