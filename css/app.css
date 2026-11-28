@@ -140,7 +140,7 @@ body.nologin nav#tabs{display:none}
 .cd.on{background:var(--ac);color:#fff;font-weight:700;cursor:pointer}.cd.td{box-shadow:inset 0 0 0 2px var(--ac)}.cd.on.td{box-shadow:inset 0 0 0 2px var(--tx)}.cd.fu{color:var(--mu);opacity:.45}
 .cd i{position:absolute;top:-3px;right:-3px;background:var(--tx);color:var(--bg);font-style:normal;font-size:10px;min-width:15px;height:15px;line-height:15px;border-radius:8px}
 /* ---------- tema claro ---------- */
-html[data-theme=light]{--bg:#f3f4f7;--s1:#ffffff;--s2:#eceef2;--s3:#dde1e8;--tx:#14171d;--mu:#68707f;--ac:#f2621f;--ac2:#c94a10;--onac:#fff;--ok:#14a362;--warn:#b98000;--bad:#dc3b3b;--acu:#2c78e0;--int:#e8781a;--pk:#dc3b3b;--dl:#14a362;--metal:linear-gradient(var(--tx),var(--tx));--glow:none;color-scheme:light}
+html[data-theme=light]{--bg:#f3f4f7;--s1:#ffffff;--s2:#eceef2;--s3:#dde1e8;--tx:#14171d;--mu:#68707f;--ac:#cf4a12;--ac2:#b0400f;--onac:#fff;--ok:#0e7f4e;--warn:#946200;--bad:#c43030;--acu:#2563c9;--int:#b85e10;--pk:#c43030;--dl:#0e7f4e;--metal:linear-gradient(var(--tx),var(--tx));--glow:none;color-scheme:light}
 html[data-theme=light] .hero{background:linear-gradient(140deg,#fff1e9,#ffffff 60%);border:1px solid #f6d9c8}
 html[data-theme=light] body{background:var(--bg)}
 
