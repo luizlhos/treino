@@ -1,4 +1,4 @@
-const APP_VERSION='4.0.1';
+const APP_VERSION='4.0.2';
 /* ---------- tema (preferência do aparelho) ---------- */
 const THEME_KEY='treino.theme';const MQ_DARK=window.matchMedia?matchMedia('(prefers-color-scheme: dark)'):null;
 function themePref(){try{return localStorage.getItem(THEME_KEY)||'light'}catch(e){return'light'}}
